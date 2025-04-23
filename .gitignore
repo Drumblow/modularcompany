@@ -42,4 +42,9 @@ next-env.d.ts
 
 # Project specific
 ModularCompanyDocumentation.pdf
+ModularCompanyDocumentation.md
+DocumentacaoCorrecaoConflitos.md
+CorrecaoConflitosResumo.md
+INSTRUCOES_DEMO.md
+CorrecaoConflitosResumo.pdf
 .git/
