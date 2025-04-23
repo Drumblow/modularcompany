@@ -323,16 +323,13 @@ export async function POST(req: NextRequest) {
     // Buscar registros existentes para este usuário na mesma data
     console.log(`[DETECÇÃO DE CONFLITO] Buscando registros existentes para userId=${session.user.id} na data=${date}`);
     
-    // CORREÇÃO: Buscar explicitamente todos os registros que não foram rejeitados,
-    // incluindo registros pendentes (approved=null) e aprovados (approved=true)
+    // CORREÇÃO: Simplificar a lógica para buscar TODOS os registros na mesma data,
+    // independente do status de aprovação ou rejeição
     const existingEntries = await prisma.timeEntry.findMany({
       where: {
         userId: session.user.id as string,
         date: new Date(`${date}T00:00:00`),
-        // ATENÇÃO: Modificação importante aqui
-        // Verificar apenas se o registro NÃO foi rejeitado (inclui null e false)
-        rejected: false,
-        // Não filtrar por approved para incluir registros com approved=null
+        // Removemos todos os filtros relacionados a status
       }
     });
     
@@ -345,6 +342,12 @@ export async function POST(req: NextRequest) {
     
     // Verificar sobreposições
     const conflictingEntries = existingEntries.filter(entry => {
+      // Se o registro for rejeitado, não precisa incluir na verificação
+      if (entry.rejected === true) {
+        console.log(`[DETECÇÃO DE CONFLITO] Ignorando registro ${entry.id} pois foi rejeitado`);
+        return false;
+      }
+      
       // Extrair apenas horas e minutos para comparação
       const entryStartHour = entry.startTime.getHours();
       const entryStartMinute = entry.startTime.getMinutes();
@@ -363,6 +366,7 @@ export async function POST(req: NextRequest) {
       const newEndMinutes = newEndHour * 60 + newEndMinute;
       
       console.log(`[DETECÇÃO DE CONFLITO] Comparando novo registro ${newStartHour}:${newStartMinute}-${newEndHour}:${newEndMinute} com existente ${entryStartHour}:${entryStartMinute}-${entryEndHour}:${entryEndMinute}`);
+      console.log(`[DETECÇÃO DE CONFLITO] Em minutos: Novo [${newStartMinutes}-${newEndMinutes}], Existente [${entryStartMinutes}-${entryEndMinutes}]`);
       console.log(`[DETECÇÃO DE CONFLITO] Status do registro existente: approved=${entry.approved}, rejected=${entry.rejected}`);
       
       // Caso 1: Novo horário começa durante um registro existente
@@ -374,15 +378,19 @@ export async function POST(req: NextRequest) {
       // Caso 4: Registro existente engloba completamente o novo horário
       const case4 = entryStartMinutes <= newStartMinutes && entryEndMinutes >= newEndMinutes;
       
-      // Verificar se há sobreposição de horário e ignorar a verificação de projeto
+      // Verificar se há sobreposição de horário
       const hasOverlap = case1 || case2 || case3 || case4;
       
       if (hasOverlap) {
         console.log(`[DETECÇÃO DE CONFLITO] CONFLITO DETECTADO com registro ${entry.id}!`);
+        console.log(`[DETECÇÃO DE CONFLITO] Status do registro em conflito: approved=${entry.approved}, rejected=${entry.rejected}`);
+        
         if (case1) console.log(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário começa durante um registro existente`);
         if (case2) console.log(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário termina durante um registro existente`);
         if (case3) console.log(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário engloba um registro existente`);
         if (case4) console.log(`[DETECÇÃO DE CONFLITO] Motivo: Registro existente engloba completamente o novo horário`);
+      } else {
+        console.log(`[DETECÇÃO DE CONFLITO] Sem sobreposição entre os horários`);
       }
       
       return hasOverlap;
@@ -393,7 +401,10 @@ export async function POST(req: NextRequest) {
     
     // Se houver conflitos, retornar erro com os detalhes
     if (conflictingEntries.length > 0) {
-      console.log(`[DETECÇÃO DE CONFLITO] Entrando no bloco de erro - Conflitos: ${conflictingEntries.length}`);
+      console.log(`[DETECÇÃO DE CONFLITO] ======== BLOQUEANDO CRIAÇÃO DE NOVO REGISTRO ========`);
+      console.log(`[DETECÇÃO DE CONFLITO] Motivo: ${conflictingEntries.length} conflitos de horário detectados`);
+      console.log(`[DETECÇÃO DE CONFLITO] Horário solicitado: ${date} ${startTime}-${endTime}`);
+      
       const conflicts = conflictingEntries.map(entry => {
         const entryStartHour = entry.startTime.getHours();
         const entryStartMinute = entry.startTime.getMinutes();
@@ -425,14 +436,20 @@ export async function POST(req: NextRequest) {
         const overlapStartFormatted = `${overlapStartHour.toString().padStart(2, '0')}:${overlapStartMinute.toString().padStart(2, '0')}`;
         const overlapEndFormatted = `${overlapEndHour.toString().padStart(2, '0')}:${overlapEndMinute.toString().padStart(2, '0')}`;
         
-        return {
+        const conflictInfo = {
+          id: entry.id,
           date: entry.date.toISOString().split('T')[0],
           startTime: `${entry.startTime.getHours().toString().padStart(2, '0')}:${entry.startTime.getMinutes().toString().padStart(2, '0')}`,
           endTime: `${entry.endTime.getHours().toString().padStart(2, '0')}:${entry.endTime.getMinutes().toString().padStart(2, '0')}`,
           project: entry.project,
+          approved: entry.approved,
+          rejected: entry.rejected,
           overlapMinutes,
           overlapPeriod: `${overlapStartFormatted} - ${overlapEndFormatted}`
         };
+        
+        console.log(`[DETECÇÃO DE CONFLITO] Detalhe do conflito:`, conflictInfo);
+        return conflictInfo;
       });
       
       return NextResponse.json({

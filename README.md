@@ -2,101 +2,94 @@
 
 Um sistema modular para gerenciamento de empresas, com diferentes níveis de acesso e módulos personalizáveis.
 
-## Atualizações Recentes
+## 🔄 Atualizações Recentes
+
+### 📊 Melhorias nos Relatórios e Filtragem de Status
+- Aprimoramos a visualização dos contadores de status (Aprovados, Pendentes, Rejeitados) para que mostrem os valores corretos independentemente do filtro selecionado
+- Melhoramos a experiência de filtragem, permitindo alternar facilmente entre diferentes visualizações
+- Os contadores agora funcionam tanto como indicadores quanto como botões de filtro
+
+### 🔔 Aprimoramentos no Sistema de Notificações
+- Implementamos atualização automática do contador de notificações
+- Corrigimos os redirecionamentos para considerar o papel do usuário (admin, manager, employee)
+- Melhoramos a experiência do usuário com feedback visual imediato após ações
 
 ### 📅 Correção no Sistema de Detecção de Conflitos de Horários
+- Corrigimos um bug crítico que permitia a criação de registros de horas sobrepostos em certos cenários
+- Implementamos verificação mais robusta de todos os casos possíveis de sobreposição temporal
+- Melhoramos as mensagens de erro e o sistema de logs para facilitar a identificação de problemas
 
-**Problema resolvido:**
-- Identificamos e corrigimos um bug no sistema de detecção de conflitos de horários, onde os registros recém-criados (com status `approved: null`) não estavam sendo incluídos corretamente na verificação de sobreposição.
-- Isso permitia que funcionários criassem registros sobrepostos quando um deles acabava de ser criado.
-
-**Melhorias implementadas:**
-- Modificamos a lógica de filtro para usar `rejected: false` em vez de `rejected: { not: true }`, garantindo que todos os registros não rejeitados sejam considerados.
-- Removemos a filtragem por `approved` para incluir registros pendentes (com `approved: null`) na verificação.
-- Adicionamos logs mais detalhados para facilitar o diagnóstico de problemas futuros.
-
-**Arquivos afetados:**
-- `/src/app/api/time-entries/route.ts` (método POST)
-- `/src/app/api/time-entries/[id]/route.ts` (método PUT)
-
-## Visão Geral
+## 👁️ Visão Geral
 
 O ModularCompany é uma plataforma que permite o gerenciamento completo de empresas através de módulos personalizáveis. O sistema possui quatro níveis de acesso:
 
-1. **Desenvolvedor**: Responsável por cadastrar empresas e gerenciar o acesso e pagamentos.
-2. **Administrador**: Gerencia a empresa, escolhe módulos, cadastra gerentes e funcionários.
-3. **Gerente**: Gerencia funcionários e tem acesso a relatórios.
-4. **Funcionário**: Acessa os serviços específicos para funcionários.
+1. **Desenvolvedor**: Cadastra empresas e gerencia acesso/pagamentos.
+2. **Administrador**: Gerencia a empresa, módulos, e cadastra gerentes/funcionários.
+3. **Gerente**: Gerencia funcionários e acessa relatórios.
+4. **Funcionário**: Acessa funcionalidades específicas para funcionários.
 
-## Módulos
+## 🧩 Módulos
 
-O sistema é construído de forma modular, permitindo a adição de novos módulos conforme necessário. O primeiro módulo implementado é:
+### ⏱️ Módulo de Controle de Horas
+O principal módulo implementado atualmente permite:
+- Registro e aprovação de horas trabalhadas
+- Geração de relatórios detalhados
+- Cálculo automático de custos baseados em taxas horárias
+- Exportação de dados em PDF e Excel
+- Notificações para eventos importantes
 
-### Módulo de Controle de Horas
+### 💼 Fluxo de Trabalho no Controle de Horas
 
-- Permite que funcionários registrem suas horas trabalhadas
-- Calcula automaticamente o total de horas
-- Gera relatórios para gerentes e administradores
-- Permite definir o valor da hora de cada funcionário para cálculos financeiros
+#### Para Funcionários:
+- Registrar horas trabalhadas com data, horário de início e término
+- Visualizar histórico e status de aprovação
+- Receber notificações sobre aprovações/rejeições
 
-### Registro de Horas
+#### Para Gestores:
+- Aprovar ou rejeitar registros (com justificativa quando necessário)
+- Visualizar relatórios por funcionário, período ou projeto
+- Analisar custos e produtividade
 
-O módulo de registro de horas permite que funcionários registrem suas horas trabalhadas, e gestores aprovem ou rejeitem esses registros. Também inclui relatórios detalhados de horas trabalhadas.
+#### Para Administradores:
+- Acesso a todos os dados e relatórios consolidados
+- Configurações avançadas do módulo
+- Gerenciamento de taxas horárias
 
-#### Funcionalidades
+## 🛠️ Tecnologias Utilizadas
 
-- **Funcionários**:
-  - Registrar horas trabalhadas com data, hora de início e término
-  - Visualizar histórico de registros
-  - Adicionar observações aos registros
-
-- **Gestores**:
-  - Aprovar ou rejeitar registros de horas
-  - Visualizar relatórios de horas por funcionário
-  - Calcular custos com base nas taxas horárias
-
-- **Administradores**:
-  - Visualizar todos os registros e relatórios
-  - Acessar dados consolidados da empresa
-
-#### Páginas
-
-- `/dashboard/employee/time-entries` - Registro de horas para funcionários
-- `/dashboard/manager/time-entries` - Aprovação de horas e relatórios para gestores
-- `/dashboard/admin/time-entries` - Relatórios completos para administradores
-
-## Tecnologias Utilizadas
-
-- **Frontend**: Next.js, React, TypeScript, Tailwind CSS
+- **Frontend**: Next.js 14, React 18, TypeScript 5, Tailwind CSS 3
 - **Backend**: API Routes do Next.js
-- **Banco de Dados**: Prisma ORM com SQLite (pode ser facilmente migrado para PostgreSQL, MySQL, etc.)
-- **Autenticação**: NextAuth.js
+- **Banco de Dados**: Prisma ORM 5 com SQLite/PostgreSQL
+- **Autenticação**: NextAuth.js 4
+- **Relatórios**: jsPDF, ExcelJS
+- **UI/UX**: Componentes customizados com Tailwind
 
-## Estrutura do Projeto
+## 📂 Estrutura do Projeto
 
 ```
 src/
-├── app/                    # Rotas e páginas da aplicação
-│   ├── dashboard/          # Dashboards para diferentes níveis de acesso
-│   │   ├── developer/      # Dashboard do desenvolvedor
-│   │   ├── admin/          # Dashboard do administrador
-│   │   ├── manager/        # Dashboard do gerente
-│   │   └── employee/       # Dashboard do funcionário
+├── app/                    # Rotas e páginas (Next.js App Router)
+│   ├── api/                # API Routes
+│   │   ├── auth/           # Autenticação
+│   │   ├── companies/      # Gestão de empresas
+│   │   ├── users/          # Gestão de usuários
+│   │   ├── time-entries/   # Controle de horas
+│   │   └── notifications/  # Sistema de notificações
+│   └── dashboard/          # Dashboards para diferentes perfis
 ├── components/             # Componentes reutilizáveis
 │   ├── ui/                 # Componentes de UI básicos
 │   ├── modules/            # Componentes específicos de módulos
-│   └── layouts/            # Layouts reutilizáveis
-├── lib/                    # Bibliotecas e utilitários
-│   └── prisma/             # Cliente Prisma para o banco de dados
-└── types/                  # Definições de tipos TypeScript
+│   └── layout/             # Componentes de layout
+├── hooks/                  # React Hooks customizados
+└── prisma/                 # Configuração do Prisma
 ```
 
-## Instalação e Execução
+## 🚀 Instalação e Execução
 
 1. Clone o repositório:
    ```bash
-   git clone https://github.com/seu-usuario/modular-company.git
-   cd modular-company
+   git clone https://github.com/Drumblow/modularcompany.git
+   cd modularcompany
    ```
 
 2. Instale as dependências:
@@ -106,6 +99,7 @@ src/
 
 3. Configure o banco de dados:
    ```bash
+   npx prisma generate
    npx prisma migrate dev --name init
    ```
 
@@ -116,13 +110,24 @@ src/
 
 5. Acesse a aplicação em [http://localhost:3000](http://localhost:3000)
 
-## Próximos Passos
+## 👥 Usuários de Teste
 
-- Implementação de autenticação completa
-- Desenvolvimento de novos módulos
-- Melhorias na interface do usuário
-- Implementação de testes automatizados
+Durante o desenvolvimento, você pode usar os seguintes usuários de teste:
 
-## Licença
+| E-mail | Senha | Perfil |
+|--------|-------|--------|
+| dev@example.com | password | Desenvolvedor |
+| admin@example.com | password | Administrador |
+| manager@example.com | password | Gerente |
+| employee@example.com | password | Funcionário |
+
+## 🔜 Próximos Passos
+
+- Implementação de mais módulos (Tarefas, Despesas, Férias)
+- Sistema de notificações em tempo real com WebSockets
+- Tema escuro e melhorias de acessibilidade
+- Melhorias no módulo de pagamentos
+
+## 📝 Licença
 
 Este projeto está licenciado sob a licença MIT - veja o arquivo LICENSE para mais detalhes. 

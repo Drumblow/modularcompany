@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String      @id @default(uuid())
+  name           String
+  email          String      @unique
+  password       String
+  role           String      @default("EMPLOYEE")
+  phone          String?
+  address        String?
+  city           String?
+  state          String?
+  zipCode        String?
+  birthDate      DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  companyId      String?
+  hourlyRate     Float?
+  managerId      String?
+  ownedCompanies Company[]   @relation("CompanyOwner")
+  timeEntries    TimeEntry[]
+  manager        User?       @relation("ManagerToEmployee", fields: [managerId], references: [id])
+  employees      User[]      @relation("ManagerToEmployee")
+  company        Company?    @relation(fields: [companyId], references: [id])
+  notifications  Notification[]
+  
+  // Pagamentos recebidos pelo usuário
+  receivedPayments Payment[]
+  
+  // Pagamentos criados pelo usuário (como admin ou gerente)
+  createdPayments  Payment[] @relation("PaymentCreator")
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  plan      String   @default("BASIC")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ownerId   String
+  owner     User     @relation("CompanyOwner", fields: [ownerId], references: [id])
+  users     User[]
+  modules   Module[] @relation("CompanyToModule")
+}
+
+model Module {
+  id          String    @id @default(uuid())
+  name        String
+  description String
+  active      Boolean   @default(true)
+  companies   Company[] @relation("CompanyToModule")
+}
+
+model TimeEntry {
+  id              String   @id @default(uuid())
+  date            DateTime
+  startTime       DateTime
+  endTime         DateTime
+  totalHours      Float
+  observation     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  userId          String
+  approved        Boolean?
+  project         String?
+  rejected        Boolean?
+  rejectionReason String?
+  user            User     @relation(fields: [userId], references: [id])
+  payments        PaymentTimeEntry[]
+}
+
+model Notification {
+  id          String    @id @default(uuid())
+  title       String
+  message     String
+  type        String    // info, success, warning, error
+  read        Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  relatedId   String?   // ID de um registro relacionado (opcional)
+  relatedType String?   // Tipo do registro relacionado (ex: "timeEntry", "task")
+}
+
+model Payment {
+  id          String    @id @default(uuid())
+  amount      Float
+  date        DateTime
+  description String?
+  reference   String?
+  paymentMethod String
+  status      String    @default("pending") // "pending" | "awaiting_confirmation" | "completed" | "cancelled"
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Novos campos para recibo
+  receiptUrl  String?
+  confirmedAt DateTime?
+  
+  // Campo para rastrear quem criou o pagamento
+  creatorId   String?
+  creator     User?     @relation("PaymentCreator", fields: [creatorId], references: [id])
+  
+  timeEntries PaymentTimeEntry[]
+  
+  @@map("payments")
+}
+
+// Tabela intermediária para relacionar pagamentos e registros de horas
+model PaymentTimeEntry {
+  id          String    @id @default(uuid())
+  paymentId   String
+  timeEntryId String
+  amount      Float     // Valor pago por este registro específico
+  
+  payment     Payment   @relation(fields: [paymentId], references: [id])
+  timeEntry   TimeEntry @relation(fields: [timeEntryId], references: [id])
+  
+  @@unique([paymentId, timeEntryId])  // Um registro não pode ser incluído duas vezes no mesmo pagamento
+}
