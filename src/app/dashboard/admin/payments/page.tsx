@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { PlusIcon, MagnifyingGlassIcon, BanknotesIcon, ClockIcon, UserGroupIcon, PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { Badge } from '@/components/ui/Badge';
 import Link from 'next/link';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 interface Payment {
   id: string;
@@ -49,7 +50,7 @@ export default function AdminPaymentListPage() {
       setPayments(data);
       setLoading(false);
     } catch (error: any) {
-      console.error('Erro ao buscar pagamentos:', error);
+      devError('Erro ao buscar pagamentos:', error);
       setError(error.message || 'Erro ao carregar pagamentos');
       setLoading(false);
     }
@@ -75,7 +76,7 @@ export default function AdminPaymentListPage() {
       setPayments(payments.filter(payment => payment.id !== id));
       alert('Pagamento excluído com sucesso');
     } catch (error: any) {
-      console.error('Erro ao excluir pagamento:', error);
+      devError('Erro ao excluir pagamento:', error);
       alert(`Erro ao excluir pagamento: ${error.message}`);
     }
   };

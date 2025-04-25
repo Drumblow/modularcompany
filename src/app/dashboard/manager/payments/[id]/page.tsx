@@ -22,6 +22,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 interface TimeEntry {
   id: string;
@@ -92,7 +93,7 @@ export default function ManagerPaymentDetailsPage({ params }: { params: { id: st
       setPayment(data);
       setLoading(false);
     } catch (error: any) {
-      console.error('Erro ao buscar detalhes do pagamento:', error);
+      devError('Erro ao buscar detalhes do pagamento:', error);
       setError(error.message || 'Erro ao carregar detalhes do pagamento');
       setLoading(false);
     }
@@ -193,7 +194,7 @@ export default function ManagerPaymentDetailsPage({ params }: { params: { id: st
       
       toast.success(statusMessages[paymentStatus as keyof typeof statusMessages] || 'Status atualizado com sucesso!');
     } catch (error: any) {
-      console.error('Erro ao atualizar status:', error);
+      devError('Erro ao atualizar status:', error);
       toast.error(`Erro: ${error.message || 'Não foi possível atualizar o status'}`);
     } finally {
       setUpdatingStatus(false);

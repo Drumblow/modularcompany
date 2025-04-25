@@ -21,6 +21,7 @@ import {
   CreditCardIcon 
 } from '@heroicons/react/24/outline';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/Alert';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 interface User {
   id: string;
@@ -86,7 +87,7 @@ export default function CreatePaymentPage() {
       setUsers(data);
       setLoading(false);
     } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
+      devError('Erro ao carregar usuários:', error);
       setLoading(false);
     }
   };
@@ -116,7 +117,7 @@ export default function CreatePaymentPage() {
       setTimeEntries(formattedEntries);
       setLoading(false);
     } catch (error) {
-      console.error('Erro ao carregar registros de horas:', error);
+      devError('Erro ao carregar registros de horas:', error);
       setLoading(false);
     }
   };
@@ -173,7 +174,7 @@ export default function CreatePaymentPage() {
         periodEnd
       };
       
-      console.log('Enviando dados:', paymentData);
+      devLog('Enviando dados:', paymentData);
       
       // Enviar dados para a API
       const response = await fetch('/api/payments', {
@@ -186,18 +187,18 @@ export default function CreatePaymentPage() {
       
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Resposta da API:', errorData);
+        devError('Resposta da API:', errorData);
         throw new Error(errorData.message || 'Erro ao criar pagamento');
       }
       
       const result = await response.json();
-      console.log('Pagamento criado:', result);
+      devLog('Pagamento criado:', result);
       
       setLoading(false);
       alert('Pagamento criado com sucesso!');
       router.push('/dashboard/admin/payments');
     } catch (error: any) {
-      console.error('Erro ao criar pagamento:', error);
+      devError('Erro ao criar pagamento:', error);
       setLoading(false);
       alert(`Erro ao criar pagamento: ${error.message || ''}`);
     }

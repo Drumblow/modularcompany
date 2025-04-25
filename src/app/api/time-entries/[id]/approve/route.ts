@@ -1,9 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { UserRole } from '@/lib/utils';
 import { z } from 'zod';
+import { devLog, devWarn, devError } from "@/lib/logger";
+
+// Funções de log do lado do servidor
+const serverLog = (message: string, data?: any) => {
+  if (process.env.NODE_ENV !== 'production') {
+    if (data !== undefined) {
+      devLog(message, data);
+    } else {
+      devLog(message);
+    }
+  }
+};
+
+const serverWarn = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devWarn(message, data);
+  } else {
+    devWarn(message);
+  }
+};
+
+const serverError = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devError(message, data);
+  } else {
+    devError(message);
+  }
+};
 
 // Schema para validação da aprovação/rejeição
 const approvalSchema = z.object({
@@ -75,7 +103,7 @@ export async function PUT(
       const entryUserCompanyId = timeEntry.user.companyId;
 
       if (!managerCompanyId || managerCompanyId !== entryUserCompanyId) {
-        console.error(`Erro de permissão: Manager (companyId: ${managerCompanyId}) tentando aprovar registro de usuário de outra empresa (companyId: ${entryUserCompanyId})`);
+        serverError(`Erro de permissão: Manager (companyId: ${managerCompanyId}) tentando aprovar registro de usuário de outra empresa (companyId: ${entryUserCompanyId})`);
         return NextResponse.json(
           { 
             message: 'Você não tem permissão para aprovar este registro', 
@@ -121,9 +149,9 @@ export async function PUT(
         ? `Seu registro de horas do dia ${updatedTimeEntry.date.toLocaleDateString('pt-BR')} foi aprovado.` 
         : `Seu registro de horas do dia ${updatedTimeEntry.date.toLocaleDateString('pt-BR')} foi rejeitado${validatedData.rejectionReason ? ': ' + validatedData.rejectionReason : '.'}`;
       
-      console.log(`Tentando criar notificação para usuário ${updatedTimeEntry.userId} sobre registro ${updatedTimeEntry.id}`);
-      console.log(`Tipo: ${notificationType}, Título: ${notificationTitle}`);
-      console.log(`Mensagem: ${notificationMessage}`);
+      serverLog(`Tentando criar notificação para usuário ${updatedTimeEntry.userId} sobre registro ${updatedTimeEntry.id}`);
+      serverLog(`Tipo: ${notificationType}, Título: ${notificationTitle}`);
+      serverLog(`Mensagem: ${notificationMessage}`);
       
       try {
         const notification = await prisma.notification.create({
@@ -137,14 +165,14 @@ export async function PUT(
           }
         });
         
-        console.log(`Notificação criada com sucesso para usuário ${updatedTimeEntry.userId}:`, {
+        serverLog(`Notificação criada com sucesso para usuário ${updatedTimeEntry.userId}:`, {
           id: notification.id,
           title: notification.title,
           type: notification.type
         });
       } catch (createError) {
-        console.error('Erro específico ao criar notificação:', createError);
-        console.error('Detalhes da tentativa:', {
+        serverError('Erro específico ao criar notificação:', createError);
+        serverError('Detalhes da tentativa:', {
           userId: updatedTimeEntry.userId,
           timeEntryId: updatedTimeEntry.id,
           title: notificationTitle,
@@ -152,7 +180,7 @@ export async function PUT(
         });
       }
     } catch (notificationError) {
-      console.error('Erro geral ao preparar notificação:', notificationError);
+      serverError('Erro geral ao preparar notificação:', notificationError);
       // Não impedimos o fluxo principal se a notificação falhar
     }
 
@@ -185,7 +213,7 @@ export async function PUT(
       );
     }
 
-    console.error('Erro ao aprovar/rejeitar registro:', error);
+    serverError('Erro ao aprovar/rejeitar registro:', error);
     return NextResponse.json(
       { message: 'Erro interno do servidor' },
       { status: 500 }

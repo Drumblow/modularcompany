@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Toast } from '@/components/ui/Toast';
 import { UserRole } from '@/lib/utils';
 import { developerNavItems } from '@/lib/navigation';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 // Interface para empresas
 interface Company {
@@ -64,7 +65,7 @@ export default function DeveloperCompaniesPage() {
       const data = await response.json();
       setCompanies(data);
     } catch (err: any) {
-      console.error('Erro ao carregar empresas:', err);
+      devError('Erro ao carregar empresas:', err);
       setError(err.message || 'Ocorreu um erro ao carregar as empresas');
     } finally {
       setLoading(false);
@@ -181,7 +182,7 @@ export default function DeveloperCompaniesPage() {
       setSuccessMessage(`Empresa ${currentlyActive ? 'desativada' : 'ativada'} com sucesso!`);
       setShowSuccessToast(true);
     } catch (err: any) {
-      console.error('Erro ao atualizar empresa:', err);
+      devError('Erro ao atualizar empresa:', err);
       setError(err.message || 'Ocorreu um erro ao atualizar a empresa');
     } finally {
       setLoading(false);
@@ -225,7 +226,7 @@ export default function DeveloperCompaniesPage() {
       setSuccessMessage('Empresa excluída com sucesso!');
       setShowSuccessToast(true);
     } catch (err: any) {
-      console.error('Erro ao excluir empresa:', err);
+      devError('Erro ao excluir empresa:', err);
       setError(err.message || 'Ocorreu um erro ao excluir a empresa');
     } finally {
       setLoading(false);

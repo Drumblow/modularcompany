@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/Table';
 import { Search } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 interface Payment {
   id: string;
@@ -89,7 +90,7 @@ export default function ManagerPaymentsPage() {
       const data = await response.json();
       setUsers(data);
     } catch (err) {
-      console.error('Erro ao buscar funcionários:', err);
+      devError('Erro ao buscar funcionários:', err);
     }
   };
 
@@ -133,7 +134,7 @@ export default function ManagerPaymentsPage() {
       setPayments(data);
       setError(null);
     } catch (err: any) {
-      console.error('Erro ao buscar pagamentos:', err);
+      devError('Erro ao buscar pagamentos:', err);
       setError(err.message || 'Não foi possível carregar os pagamentos. Tente novamente mais tarde.');
     } finally {
       setLoading(false);

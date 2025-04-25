@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 export interface User {
   id: string;
@@ -39,7 +40,7 @@ export function useUsers() {
       const data = await response.json();
       setUsers(data);
     } catch (err: any) {
-      console.error('Erro ao buscar usuários:', err);
+      devError('Erro ao buscar usuários:', err);
       setError(err.message || 'Ocorreu um erro ao buscar os usuários');
     } finally {
       setLoading(false);

@@ -48,3 +48,8 @@ CorrecaoConflitosResumo.md
 INSTRUCOES_DEMO.md
 CorrecaoConflitosResumo.pdf
 .git/
+
+# Database
+prisma/dev.db
+*.db
+*.db-journal

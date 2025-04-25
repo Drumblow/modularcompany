@@ -17,6 +17,7 @@ import {
   BanknotesIcon, 
   CreditCardIcon 
 } from '@heroicons/react/24/outline';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 interface User {
   id: string;
@@ -87,7 +88,7 @@ export default function ManagerCreatePaymentPage() {
       setUsers(data);
       setLoading(false);
     } catch (error: any) {
-      console.error('Erro ao carregar usuários:', error);
+      devError('Erro ao carregar usuários:', error);
       setError('Não foi possível carregar a lista de funcionários');
       setLoading(false);
     }
@@ -109,7 +110,7 @@ export default function ManagerCreatePaymentPage() {
       setTimeEntries(data);
       setLoading(false);
     } catch (error: any) {
-      console.error('Erro ao carregar registros de horas:', error);
+      devError('Erro ao carregar registros de horas:', error);
       setError('Não foi possível carregar os registros de horas');
       setLoading(false);
     }
@@ -178,7 +179,7 @@ export default function ManagerCreatePaymentPage() {
       
       router.push('/dashboard/manager/payments');
     } catch (error: any) {
-      console.error('Erro ao criar pagamento:', error);
+      devError('Erro ao criar pagamento:', error);
       setError(`Erro ao criar pagamento: ${error.message}`);
       setLoading(false);
     }

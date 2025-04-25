@@ -1,3 +1,4 @@
+import { devLog, devWarn, devError } from '@/lib/logger';
 // Script para criar uma notificação de teste
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
@@ -11,11 +12,11 @@ async function main() {
   });
 
   if (!admin) {
-    console.log('Nenhum administrador encontrado no sistema.');
+    devLog('Nenhum administrador encontrado no sistema.');
     return;
   }
 
-  console.log(`Criando notificação de teste para o administrador: ${admin.name} (${admin.id})`);
+  devLog(`Criando notificação de teste para o administrador: ${admin.name} (${admin.id})`);
   
   // Criar notificação
   const notification = await prisma.notification.create({
@@ -28,13 +29,13 @@ async function main() {
     }
   });
 
-  console.log('Notificação criada com sucesso:');
-  console.log(notification);
+  devLog('Notificação criada com sucesso:');
+  devLog(notification);
 }
 
 main()
   .catch(e => {
-    console.error('Erro ao criar notificação de teste:', e);
+    devError('Erro ao criar notificação de teste:', e);
     process.exit(1);
   })
   .finally(async () => {

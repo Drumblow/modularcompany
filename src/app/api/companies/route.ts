@@ -1,10 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { z } from "zod";
 import { hash } from "bcryptjs";
 import { UserRole, PlanType } from "@/lib/utils";
+import { devLog, devWarn, devError } from "@/lib/logger";
+
+// Funções de log do lado do servidor
+const serverLog = (message: string, data?: any) => {
+  if (process.env.NODE_ENV !== 'production') {
+    if (data !== undefined) {
+      devLog(message, data);
+    } else {
+      devLog(message);
+    }
+  }
+};
+
+const serverWarn = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devWarn(message, data);
+  } else {
+    devWarn(message);
+  }
+};
+
+const serverError = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devError(message, data);
+  } else {
+    devError(message);
+  }
+};
 
 // Schema de validação para criação de empresa e admin
 const createCompanySchema = z.object({
@@ -89,7 +117,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(formattedCompanies);
   } catch (error: any) {
-    console.error("Erro ao listar empresas:", error);
+    serverError("Erro ao listar empresas:", error);
     return NextResponse.json(
       { message: "Erro interno do servidor", error: error.message },
       { status: 500 }
@@ -192,7 +220,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error("Erro ao criar empresa:", error);
+    serverError("Erro ao criar empresa:", error);
     return NextResponse.json(
       { message: "Erro interno do servidor", error: error.message },
       { status: 500 }

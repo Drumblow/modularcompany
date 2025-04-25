@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 interface LocalDateProps {
   date: string | Date;
@@ -31,7 +32,7 @@ export function LocalDate({ date, formatString = 'dd/MM/yyyy', className = '' }:
     const formattedDate = format(dateObj, formatString, { locale: ptBR });
     return <span className={className}>{formattedDate}</span>;
   } catch (error) {
-    console.error('Erro ao formatar data:', error);
+    devError('Erro ao formatar data:', error);
     return <span className={className}>Data inválida</span>;
   }
 }

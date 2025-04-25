@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { CalendarDaysIcon, ClockIcon, UserGroupIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 export default function ManagerDashboardPage() {
   const [totalEmployees, setTotalEmployees] = useState(0);
@@ -29,7 +30,7 @@ export default function ManagerDashboardPage() {
           setPendingPayments(data.pendingPayments || 0);
         }
       } catch (error) {
-        console.error('Erro ao buscar estatísticas do dashboard:', error);
+        devError('Erro ao buscar estatísticas do dashboard:', error);
       } finally {
         setLoading(false);
       }

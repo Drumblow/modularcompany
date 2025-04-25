@@ -12,6 +12,7 @@ import { TimeEntry } from '@/hooks/useTimeEntries';
 import { ChevronDown } from 'lucide-react';
 import { exportReportToPDF } from './ExportReportPDF';
 import { exportReportToExcel } from './ExportReportExcel';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 interface ExportReportButtonProps {
   title: string;
@@ -62,7 +63,7 @@ export function ExportReportButton({
       
       onExportSuccess('Relatório em PDF exportado com sucesso!');
     } catch (error) {
-      console.error('Erro ao exportar relatório em PDF:', error);
+      devError('Erro ao exportar relatório em PDF:', error);
       onExportError('Erro ao exportar relatório em PDF. Tente novamente.');
     } finally {
       setIsExporting(false);
@@ -89,7 +90,7 @@ export function ExportReportButton({
       
       onExportSuccess('Relatório em Excel exportado com sucesso!');
     } catch (error) {
-      console.error('Erro ao exportar relatório em Excel:', error);
+      devError('Erro ao exportar relatório em Excel:', error);
       onExportError('Erro ao exportar relatório em Excel. Tente novamente.');
     } finally {
       setIsExporting(false);

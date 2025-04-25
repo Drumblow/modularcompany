@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Toast } from '@/components/ui/Toast';
 import { UserRole, type UserRoleType } from '@/lib/utils';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 // Interface para usuários
 interface User {
@@ -72,7 +73,7 @@ export default function AdminUsersPage() {
       const data = await response.json();
       setUsers(data);
     } catch (err: any) {
-      console.error('Erro ao buscar usuários:', err);
+      devError('Erro ao buscar usuários:', err);
       setError(err.message || 'Ocorreu um erro ao buscar os usuários');
     } finally {
       setLoading(false);
@@ -172,7 +173,7 @@ export default function AdminUsersPage() {
       }
 
       const data = await response.json();
-      console.log('Usuário criado com sucesso:', data);
+      devLog('Usuário criado com sucesso:', data);
       
       // Adicionar o novo usuário à lista
       // A API pode retornar o usuário diretamente ou dentro de um objeto { user: {...} }
@@ -192,11 +193,11 @@ export default function AdminUsersPage() {
           fetchUsers();
         }, 500);
       } else {
-        console.error('Dados de usuário inválidos recebidos da API:', data);
+        devError('Dados de usuário inválidos recebidos da API:', data);
         setError('Resposta inválida do servidor ao criar usuário');
       }
     } catch (err: any) {
-      console.error('Erro ao criar usuário:', err);
+      devError('Erro ao criar usuário:', err);
       setError(err.message || 'Ocorreu um erro ao criar o usuário');
     } finally {
       setLoading(false);
@@ -255,7 +256,7 @@ export default function AdminUsersPage() {
       }
 
       const data = await response.json();
-      console.log('Usuário atualizado com sucesso:', data);
+      devLog('Usuário atualizado com sucesso:', data);
       
       // Atualizar o usuário na lista
       // A API pode retornar o usuário diretamente ou dentro de um objeto { user: {...} }
@@ -279,11 +280,11 @@ export default function AdminUsersPage() {
           fetchUsers();
         }, 500);
       } else {
-        console.error('Dados de usuário inválidos recebidos da API:', data);
+        devError('Dados de usuário inválidos recebidos da API:', data);
         setError('Resposta inválida do servidor ao atualizar usuário');
       }
     } catch (err: any) {
-      console.error('Erro ao atualizar usuário:', err);
+      devError('Erro ao atualizar usuário:', err);
       setError(err.message || 'Ocorreu um erro ao atualizar o usuário');
     } finally {
       setLoading(false);
@@ -333,7 +334,7 @@ export default function AdminUsersPage() {
       setSuccessMessage('Usuário excluído com sucesso!');
       setShowSuccessToast(true);
     } catch (err: any) {
-      console.error('Erro ao excluir usuário:', err);
+      devError('Erro ao excluir usuário:', err);
       setError(err.message || 'Ocorreu um erro ao excluir o usuário');
     } finally {
       setLoading(false);

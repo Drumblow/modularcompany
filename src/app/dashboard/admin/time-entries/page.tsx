@@ -12,6 +12,7 @@ import { TimeEntryList } from '@/components/modules/TimeTracking/TimeEntryList';
 import { Toast } from '@/components/ui/Toast';
 import { useSession } from 'next-auth/react';
 import { UserRole } from '@/lib/utils';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 export default function AdminTimeEntriesPage() {
   const { entries, loading, error, fetchEntries, approveEntry, rejectEntry } = useTimeEntries();
@@ -24,30 +25,30 @@ export default function AdminTimeEntriesPage() {
 
   // Buscar entradas ao montar o componente
   useEffect(() => {
-    console.log('[AdminTimeEntriesPage] Iniciando fetchEntries no useEffect');
-    console.log('[AdminTimeEntriesPage] Sessão atual:', session);
+    devLog('[AdminTimeEntriesPage] Iniciando fetchEntries no useEffect');
+    devLog('[AdminTimeEntriesPage] Sessão atual:', session);
     fetchEntries();
   }, [fetchEntries]);
 
   // Log detalhado das entradas
   useEffect(() => {
-    console.log(`[AdminTimeEntriesPage] Entradas carregadas: ${entries.length}`);
+    devLog(`[AdminTimeEntriesPage] Entradas carregadas: ${entries.length}`);
     if (entries.length > 0) {
-      console.log('[AdminTimeEntriesPage] Primeira entrada:', entries[0]);
-      console.log('[AdminTimeEntriesPage] Todas as entradas:', entries);
+      devLog('[AdminTimeEntriesPage] Primeira entrada:', entries[0]);
+      devLog('[AdminTimeEntriesPage] Todas as entradas:', entries);
     }
   }, [entries]);
 
   // Log de mudança de tab
   useEffect(() => {
-    console.log(`[AdminTimeEntriesPage] Tab ativa alterada para: ${activeTab}`);
+    devLog(`[AdminTimeEntriesPage] Tab ativa alterada para: ${activeTab}`);
     if (activeTab === 'my-entries') {
-      console.log(`[AdminTimeEntriesPage] Na tab "Meus Registros", userId: ${session?.user?.id}`);
+      devLog(`[AdminTimeEntriesPage] Na tab "Meus Registros", userId: ${session?.user?.id}`);
       if (session) {
         fetchEntries({ userId: session.user.id });
       }
     } else if (activeTab === 'approval') {
-      console.log(`[AdminTimeEntriesPage] Na tab "Aprovação", buscando todos os registros`);
+      devLog(`[AdminTimeEntriesPage] Na tab "Aprovação", buscando todos os registros`);
       // Quando volta para a aba de aprovação, buscar todos os registros novamente
       fetchEntries();
     }

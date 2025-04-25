@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 export interface Notification {
   id: string;
@@ -43,7 +44,7 @@ export function useNotifications() {
       setNotifications(data.notifications);
       setUnreadCount(data.unreadCount);
     } catch (err: any) {
-      console.error('Erro ao buscar notificações:', err);
+      devError('Erro ao buscar notificações:', err);
       setError(err.message || 'Ocorreu um erro ao buscar as notificações');
     } finally {
       setLoading(false);
@@ -92,7 +93,7 @@ export function useNotifications() {
 
       return true;
     } catch (err: any) {
-      console.error('Erro ao atualizar notificação:', err);
+      devError('Erro ao atualizar notificação:', err);
       setError(err.message || 'Ocorreu um erro ao atualizar a notificação');
       return false;
     } finally {
@@ -133,7 +134,7 @@ export function useNotifications() {
 
       return true;
     } catch (err: any) {
-      console.error('Erro ao excluir notificação:', err);
+      devError('Erro ao excluir notificação:', err);
       setError(err.message || 'Ocorreu um erro ao excluir a notificação');
       return false;
     } finally {
@@ -183,7 +184,7 @@ export function useNotifications() {
 
       return true;
     } catch (err: any) {
-      console.error('Erro ao marcar todas como lidas:', err);
+      devError('Erro ao marcar todas como lidas:', err);
       setError(err.message || 'Ocorreu um erro ao marcar todas as notificações como lidas');
       return false;
     } finally {

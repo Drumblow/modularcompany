@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { BanknotesIcon, ClockIcon, CalendarIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 interface Payment {
   id: string;
@@ -66,7 +67,7 @@ export default function EmployeeDashboard() {
           });
         }
       } catch (error) {
-        console.error('Erro ao buscar estatísticas de pagamentos:', error);
+        devError('Erro ao buscar estatísticas de pagamentos:', error);
       } finally {
         setLoading(false);
       }

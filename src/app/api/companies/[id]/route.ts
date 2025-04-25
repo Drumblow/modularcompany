@@ -1,9 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { z } from "zod";
 import { UserRole, PlanType } from "@/lib/utils";
+import { devLog, devWarn, devError } from "@/lib/logger";
+
+// Funções de log do lado do servidor
+const serverLog = (message: string, data?: any) => {
+  if (process.env.NODE_ENV !== 'production') {
+    if (data !== undefined) {
+      devLog(message, data);
+    } else {
+      devLog(message);
+    }
+  }
+};
+
+const serverWarn = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devWarn(message, data);
+  } else {
+    devWarn(message);
+  }
+};
+
+const serverError = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devError(message, data);
+  } else {
+    devError(message);
+  }
+};
 
 // Schema de validação para atualização de empresa
 const updateCompanySchema = z.object({
@@ -106,7 +134,7 @@ export async function GET(
 
     return NextResponse.json(formattedCompany);
   } catch (error: any) {
-    console.error("Erro ao buscar empresa:", error);
+    serverError("Erro ao buscar empresa:", error);
     return NextResponse.json(
       { message: "Erro interno do servidor", error: error.message },
       { status: 500 }
@@ -172,7 +200,7 @@ export async function PUT(
       company: updatedCompany,
     });
   } catch (error: any) {
-    console.error("Erro ao atualizar empresa:", error);
+    serverError("Erro ao atualizar empresa:", error);
     return NextResponse.json(
       { message: "Erro interno do servidor", error: error.message },
       { status: 500 }
@@ -231,7 +259,7 @@ export async function PATCH(
       company: updatedCompany,
     });
   } catch (error: any) {
-    console.error("Erro ao atualizar status da empresa:", error);
+    serverError("Erro ao atualizar status da empresa:", error);
     return NextResponse.json(
       { message: "Erro interno do servidor", error: error.message },
       { status: 500 }
@@ -305,7 +333,7 @@ export async function DELETE(
       message: "Empresa excluída com sucesso"
     });
   } catch (error: any) {
-    console.error("Erro ao excluir empresa:", error);
+    serverError("Erro ao excluir empresa:", error);
     
     // Verificar se é um erro de restrição de integridade referencial
     if (error.code === 'P2003' || error.code === 'P2014') {

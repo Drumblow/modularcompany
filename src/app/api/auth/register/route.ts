@@ -2,6 +2,34 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { hash } from "bcryptjs";
 import { z } from "zod";
+import { devLog, devWarn, devError } from "@/lib/logger";
+
+// Funções de log do lado do servidor
+const serverLog = (message: string, data?: any) => {
+  if (process.env.NODE_ENV !== 'production') {
+    if (data !== undefined) {
+      devLog(message, data);
+    } else {
+      devLog(message);
+    }
+  }
+};
+
+const serverWarn = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devWarn(message, data);
+  } else {
+    devWarn(message);
+  }
+};
+
+const serverError = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devError(message, data);
+  } else {
+    devError(message);
+  }
+};
 
 // Schema de validação para o corpo da requisição
 const registerSchema = z.object({
@@ -59,7 +87,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error("Erro ao registrar usuário:", error);
+    serverError("Erro ao registrar usuário:", error);
     return NextResponse.json(
       { message: "Erro interno do servidor", error: error.message },
       { status: 500 }

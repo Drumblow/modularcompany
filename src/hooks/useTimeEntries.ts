@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 export interface TimeEntry {
   id: string;
@@ -60,7 +61,7 @@ export function useTimeEntries() {
           document.querySelector('[data-state="active"][value="my-entries"]') !== null
         );
       
-      console.log(`[useTimeEntries] Verificação de "Meus Registros":`, {
+      devLog(`[useTimeEntries] Verificação de "Meus Registros":`, {
         pathname: typeof window !== 'undefined' ? window.location.pathname : 'N/A',
         hash: typeof window !== 'undefined' ? window.location.hash : 'N/A',
         tabElement: typeof document !== 'undefined' ? !!document.querySelector('[data-state="active"][value="my-entries"]') : 'N/A',
@@ -71,10 +72,10 @@ export function useTimeEntries() {
       // explicitamente adicionar o userId da sessão atual
       if (filters?.userId) {
         queryParams.append('userId', filters.userId);
-        console.log(`[useTimeEntries] Adicionado userId explícito ao filtro: ${filters.userId}`);
+        devLog(`[useTimeEntries] Adicionado userId explícito ao filtro: ${filters.userId}`);
       } else if (isMyEntriesView) {
         queryParams.append('userId', session.user.id as string);
-        console.log(`[useTimeEntries] Auto-adicionado userId da sessão atual ao filtro: ${session.user.id}`);
+        devLog(`[useTimeEntries] Auto-adicionado userId da sessão atual ao filtro: ${session.user.id}`);
       }
 
       if (filters?.startDate) queryParams.append('startDate', filters.startDate);
@@ -85,27 +86,27 @@ export function useTimeEntries() {
         url += `?${queryString}`;
       }
 
-      console.log(`[useTimeEntries] Buscando entradas em: ${url}`);
-      console.log(`[useTimeEntries] Usuário atual: ID=${session.user.id}, Role=${session.user.role}, CompanyID=${session.user.companyId}`);
+      devLog(`[useTimeEntries] Buscando entradas em: ${url}`);
+      devLog(`[useTimeEntries] Usuário atual: ID=${session.user.id}, Role=${session.user.role}, CompanyID=${session.user.companyId}`);
       
       const response = await fetch(url);
       
       if (!response.ok) {
         const data = await response.json();
-        console.error(`[useTimeEntries] Erro na resposta:`, data);
+        devError(`[useTimeEntries] Erro na resposta:`, data);
         throw new Error(data.message || 'Erro ao buscar registros de horas');
       }
 
       const data = await response.json();
-      console.log(`[useTimeEntries] Buscou ${data.length} entradas:`, data);
+      devLog(`[useTimeEntries] Buscou ${data.length} entradas:`, data);
       
       if (filters?.userId) {
-        console.log(`[useTimeEntries] Filtrando por userId=${filters.userId}, entradas encontradas: ${data.filter((e: TimeEntry) => e.userId === filters.userId).length}/${data.length}`);
+        devLog(`[useTimeEntries] Filtrando por userId=${filters.userId}, entradas encontradas: ${data.filter((e: TimeEntry) => e.userId === filters.userId).length}/${data.length}`);
       }
       
       setEntries(data);
     } catch (err: any) {
-      console.error('Erro ao buscar registros de horas:', err);
+      devError('Erro ao buscar registros de horas:', err);
       setError(err.message || 'Ocorreu um erro ao buscar os registros');
     } finally {
       setLoading(false);
@@ -130,7 +131,7 @@ export function useTimeEntries() {
       const data = await response.json();
       return data;
     } catch (err: any) {
-      console.error('Erro ao buscar registro de horas:', err);
+      devError('Erro ao buscar registro de horas:', err);
       setError(err.message || 'Ocorreu um erro ao buscar o registro');
       return null;
     } finally {
@@ -174,7 +175,7 @@ export function useTimeEntries() {
       
       return data;
     } catch (err: any) {
-      console.error('Erro ao criar registro de horas:', err);
+      devError('Erro ao criar registro de horas:', err);
       setError(err.message || 'Ocorreu um erro ao criar o registro');
       throw err;
     } finally {
@@ -222,7 +223,7 @@ export function useTimeEntries() {
       
       return data;
     } catch (err: any) {
-      console.error('Erro ao atualizar registro de horas:', err);
+      devError('Erro ao atualizar registro de horas:', err);
       setError(err.message || 'Ocorreu um erro ao atualizar o registro');
       throw err;
     } finally {
@@ -238,37 +239,37 @@ export function useTimeEntries() {
     setError(null);
 
     try {
-      console.log(`[useTimeEntries] Iniciando exclusão da entrada ${id}`);
-      console.log(`[useTimeEntries] URL da requisição: /api/time-entries/${id}`);
-      console.log(`[useTimeEntries] Método: DELETE`);
-      console.log(`[useTimeEntries] Usuário da sessão:`, session.user);
+      devLog(`[useTimeEntries] Iniciando exclusão da entrada ${id}`);
+      devLog(`[useTimeEntries] URL da requisição: /api/time-entries/${id}`);
+      devLog(`[useTimeEntries] Método: DELETE`);
+      devLog(`[useTimeEntries] Usuário da sessão:`, session.user);
       
       const response = await fetch(`/api/time-entries/${id}`, {
         method: 'DELETE',
       });
 
-      console.log(`[useTimeEntries] Status da resposta: ${response.status}`);
+      devLog(`[useTimeEntries] Status da resposta: ${response.status}`);
       
       if (!response.ok) {
         const data = await response.json();
-        console.error(`[useTimeEntries] Erro na resposta:`, data);
+        devError(`[useTimeEntries] Erro na resposta:`, data);
         throw new Error(data.message || 'Erro ao excluir registro de horas');
       }
 
       const responseText = await response.text();
-      console.log(`[useTimeEntries] Resposta completa:`, responseText);
+      devLog(`[useTimeEntries] Resposta completa:`, responseText);
       
       // Atualizar a lista de entradas
       setEntries(prev => {
         const updatedEntries = prev.filter(entry => entry.id !== id);
-        console.log(`[useTimeEntries] Entradas após exclusão: ${updatedEntries.length} (removido ${id})`);
+        devLog(`[useTimeEntries] Entradas após exclusão: ${updatedEntries.length} (removido ${id})`);
         return updatedEntries;
       });
       
-      console.log(`[useTimeEntries] Exclusão bem-sucedida para entrada ${id}`);
+      devLog(`[useTimeEntries] Exclusão bem-sucedida para entrada ${id}`);
       return true;
     } catch (err: any) {
-      console.error(`[useTimeEntries] Erro ao excluir registro de horas ${id}:`, err);
+      devError(`[useTimeEntries] Erro ao excluir registro de horas ${id}:`, err);
       setError(err.message || 'Ocorreu um erro ao excluir o registro');
       return false;
     } finally {
@@ -284,7 +285,7 @@ export function useTimeEntries() {
     setError(null);
 
     try {
-      console.log(`Tentando aprovar registro ${id}...`);
+      devLog(`Tentando aprovar registro ${id}...`);
       
       const response = await fetch(`/api/time-entries/${id}/approve`, {
         method: 'PUT',
@@ -297,14 +298,14 @@ export function useTimeEntries() {
       if (!response.ok) {
         // Extrair texto completo da resposta para debug
         const responseText = await response.text();
-        console.error(`Erro na aprovação (${response.status}):`, responseText);
+        devError(`Erro na aprovação (${response.status}):`, responseText);
         
         // Tentar analisar como JSON se possível
         let errorData: { message: string; details?: string } = { message: `Erro ${response.status}` };
         try {
           errorData = JSON.parse(responseText);
         } catch (e) {
-          console.warn('Não foi possível analisar resposta como JSON');
+          devWarn('Não foi possível analisar resposta como JSON');
         }
         
         // Construir mensagem de erro detalhada
@@ -319,9 +320,9 @@ export function useTimeEntries() {
       
       try {
         updatedEntry = JSON.parse(responseData);
-        console.log(`Registro ${id} aprovado com sucesso:`, updatedEntry);
+        devLog(`Registro ${id} aprovado com sucesso:`, updatedEntry);
       } catch (e) {
-        console.warn('Resposta não é um JSON válido:', responseData);
+        devWarn('Resposta não é um JSON válido:', responseData);
       }
       
       // Se conseguimos um objeto válido da resposta, atualizamos a lista
@@ -333,7 +334,7 @@ export function useTimeEntries() {
         );
       } else {
         // Se não, pelo menos atualizamos o status na lista atual
-        console.log(`Atualizando registro ${id} localmente (approved=true, rejected=false)`);
+        devLog(`Atualizando registro ${id} localmente (approved=true, rejected=false)`);
         setEntries(prev => 
           prev.map(entry => 
             entry.id === id ? { ...entry, approved: true, rejected: false } : entry
@@ -343,7 +344,7 @@ export function useTimeEntries() {
       
       return true;
     } catch (err: any) {
-      console.error('Erro ao aprovar registro de horas:', err);
+      devError('Erro ao aprovar registro de horas:', err);
       setError(err.message || 'Ocorreu um erro ao aprovar o registro');
       return false;
     } finally {
@@ -402,7 +403,7 @@ export function useTimeEntries() {
       
       return true;
     } catch (err: any) {
-      console.error('Erro ao rejeitar registro de horas:', err);
+      devError('Erro ao rejeitar registro de horas:', err);
       setError(err.message || 'Ocorreu um erro ao rejeitar o registro');
       return false;
     } finally {

@@ -3,9 +3,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
+import { devLog, devWarn, devError } from "@/lib/logger";
+
+// Funções de log do lado do servidor
+const serverLog = (message: string, data?: any) => {
+  if (process.env.NODE_ENV !== 'production') {
+    if (data !== undefined) {
+      devLog(message, data);
+    } else {
+      devLog(message);
+    }
+  }
+};
+
+const serverWarn = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devWarn(message, data);
+  } else {
+    devWarn(message);
+  }
+};
+
+const serverError = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devError(message, data);
+  } else {
+    devError(message);
+  }
+};
 
 // Definir interfaces para os tipos do Prisma que não estão sendo reconhecidos
 interface Payment {
@@ -102,7 +130,7 @@ export async function GET(request: Request) {
     }
     
     // Adicionar log para depuração
-    console.log("Sessão do usuário:", JSON.stringify(session, null, 2));
+    serverLog("Sessão do usuário:", JSON.stringify(session, null, 2));
     
     // Obter usuário atual
     const currentUser = await prisma.user.findUnique({
@@ -117,7 +145,7 @@ export async function GET(request: Request) {
     });
     
     // Adicionar log para depuração do usuário atual
-    console.log("Usuário atual:", currentUser);
+    serverLog("Usuário atual:", currentUser);
     
     if (!currentUser) {
       return NextResponse.json(
@@ -339,7 +367,7 @@ export async function GET(request: Request) {
             updatedAt: payment.updatedAt,
           };
         } catch (entryError) {
-          console.error('Erro ao processar entrada de pagamento:', entryError, payment);
+          serverError('Erro ao processar entrada de pagamento:', entryError, payment);
           // Retorna um objeto básico se houver erro no processamento
           return {
             id: payment.id,
@@ -360,14 +388,14 @@ export async function GET(request: Request) {
       
       return NextResponse.json(formattedPayments);
     } catch (dbError) {
-      console.error('Erro na consulta ao banco de dados:', dbError);
+      serverError('Erro na consulta ao banco de dados:', dbError);
       return NextResponse.json(
         { message: 'Erro na consulta ao banco de dados', error: dbError.message },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error('Erro ao listar pagamentos:', error);
+    serverError('Erro ao listar pagamentos:', error);
     return NextResponse.json(
       { message: 'Erro interno do servidor', error: error.message },
       { status: 500 }
@@ -388,7 +416,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("Session POST:", JSON.stringify(session, null, 2));
+    serverLog("Session POST:", JSON.stringify(session, null, 2));
 
     // Obter usuário atual
     const currentUser = await prisma.user.findUnique({
@@ -586,7 +614,7 @@ export async function POST(req: NextRequest) {
         }
       });
     } catch (notificationError) {
-      console.error('Erro ao criar notificação de pagamento:', notificationError);
+      serverError('Erro ao criar notificação de pagamento:', notificationError);
       // Não impede o fluxo principal
     }
 
@@ -618,7 +646,7 @@ export async function POST(req: NextRequest) {
     
     return NextResponse.json(formattedPayment, { status: 201 });
   } catch (error: any) {
-    console.error('Erro ao criar pagamento:', error);
+    serverError('Erro ao criar pagamento:', error);
     return NextResponse.json(
       { message: 'Erro interno do servidor', error: error.message },
       { status: 500 }

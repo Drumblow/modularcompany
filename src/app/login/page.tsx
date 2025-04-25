@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
@@ -9,8 +9,10 @@ import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Toast } from '@/components/ui/Toast';
 import { UserRole } from '@/lib/utils';
+import { devLog, devError } from '@/lib/logger';
 
-export default function LoginPage() {
+// Componente separado que usa useSearchParams
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
@@ -38,27 +40,25 @@ export default function LoginPage() {
     setError('');
     
     try {
-      // Primeiro, configurar os usuários de demonstração
-      const setupResponse = await fetch('/api/setup-demo', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      if (!setupResponse.ok) {
-        const errorData = await setupResponse.json();
-        console.error('Erro ao configurar usuários de demo:', errorData);
-        // Continuar mesmo com erro, pois os usuários podem já existir
-      }
-      
       // Configurar email e senha conforme o papel
       let email, password;
       
+      // Em produção, apenas permitir login rápido para desenvolvedor
+      const isProd = process.env.NODE_ENV === 'production';
+      
+      if (isProd && role !== UserRole.DEVELOPER) {
+        setError('Login rápido apenas disponível para desenvolvedor em produção');
+        setLoading(false);
+        return;
+      }
+      
       switch (role) {
         case UserRole.DEVELOPER:
-          email = 'dev@example.com';
-          password = 'dev123456';
+          // Usar variáveis de ambiente em produção
+          email = isProd 
+            ? process.env.NEXT_PUBLIC_DEVELOPER_EMAIL || 'dev@example.com'
+            : 'dev@example.com';
+          password = 'dev123456'; // Manter a senha padrão para o exemplo
           break;
         case UserRole.ADMIN:
           email = 'admin@example.com';
@@ -76,6 +76,49 @@ export default function LoginPage() {
           throw new Error('Papel inválido');
       }
       
+      // Primeiro, configurar os usuários de demonstração (apenas em desenvolvimento)
+      if (!isProd || role === UserRole.DEVELOPER) {
+        try {
+          // Obter um token de segurança da .env (deve ser configurado no servidor)
+          // Em produção, este token deve ser complexo e armazenado como variável de ambiente
+          const setupToken = process.env.NEXT_PUBLIC_SETUP_TOKEN || 'desenvolvimento-seguro';
+          
+          const setupResponse = await fetch('/api/setup-demo', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Setup-Security-Token': setupToken
+            },
+            body: JSON.stringify({
+              requestedRole: role,
+              clientInfo: {
+                userAgent: navigator.userAgent,
+                timestamp: new Date().toISOString()
+              }
+            })
+          });
+          
+          if (!setupResponse.ok) {
+            const errorData = await setupResponse.json();
+            devError('Erro ao configurar usuários:', errorData);
+            if (isProd) {
+              setError('Erro ao configurar usuário do desenvolvedor. Contate o administrador do sistema.');
+              setLoading(false);
+              return;
+            }
+            // Em desenvolvimento, continue mesmo com erro
+          }
+        } catch (setupErr) {
+          devError('Erro na configuração:', setupErr);
+          // Continuar tentando login em desenvolvimento
+          if (isProd) {
+            setError('Erro na configuração inicial. Contate o administrador do sistema.');
+            setLoading(false);
+            return;
+          }
+        }
+      }
+      
       // Usando NextAuth para autenticação
       const result = await signIn('credentials', {
         redirect: false,
@@ -85,10 +128,11 @@ export default function LoginPage() {
 
       if (result?.error) {
         setError('Credenciais inválidas. Verifique se o banco de dados está configurado corretamente.');
+        setLoading(false);
         return;
       }
       
-      console.log('Login rápido bem-sucedido, obtendo sessão...');
+      devLog('Login rápido bem-sucedido, obtendo sessão...');
       
       // Adicionar um pequeno atraso para garantir que a sessão seja atualizada
       setTimeout(async () => {
@@ -97,11 +141,11 @@ export default function LoginPage() {
           const response = await fetch('/api/auth/session');
           const session = await response.json();
           
-          console.log('Sessão obtida:', session);
+          devLog('Sessão obtida:', session);
           
           if (session && session.user && session.user.role) {
             const userRole = session.user.role;
-            console.log('Papel do usuário:', userRole);
+            devLog('Papel do usuário:', userRole);
             
             // Redirecionamento baseado no papel real do usuário
             switch (userRole) {
@@ -121,16 +165,16 @@ export default function LoginPage() {
                 router.push('/dashboard');
             }
           } else {
-            console.error('Sessão inválida ou papel não encontrado:', session);
+            devError('Sessão inválida ou papel não encontrado:', session);
             router.push('/dashboard');
           }
         } catch (sessionErr) {
-          console.error('Erro ao obter sessão:', sessionErr);
+          devError('Erro ao obter sessão:', sessionErr);
           router.push('/dashboard');
         }
       }, 500);
     } catch (err) {
-      console.error('Erro de autenticação:', err);
+      devError('Erro de autenticação:', err);
       setError('Falha na autenticação. Verifique suas credenciais ou tente novamente mais tarde.');
       setLoading(false);
     }
@@ -156,7 +200,7 @@ export default function LoginPage() {
 
       // Buscar a sessão atual para obter o papel do usuário
       // Isso garante que usamos o papel real do banco de dados
-      console.log('Login bem-sucedido, obtendo sessão...');
+      devLog('Login bem-sucedido, obtendo sessão...');
       
       // Adicionar um pequeno atraso para garantir que a sessão seja atualizada
       setTimeout(async () => {
@@ -165,11 +209,11 @@ export default function LoginPage() {
           const response = await fetch('/api/auth/session');
           const session = await response.json();
           
-          console.log('Sessão obtida:', session);
+          devLog('Sessão obtida:', session);
           
           if (session && session.user && session.user.role) {
             const userRole = session.user.role;
-            console.log('Papel do usuário:', userRole);
+            devLog('Papel do usuário:', userRole);
             
             // Redirecionamento baseado no papel real do usuário
             switch (userRole) {
@@ -189,16 +233,16 @@ export default function LoginPage() {
                 router.push('/dashboard');
             }
           } else {
-            console.error('Sessão inválida ou papel não encontrado:', session);
+            devError('Sessão inválida ou papel não encontrado:', session);
             router.push('/dashboard');
           }
         } catch (sessionErr) {
-          console.error('Erro ao obter sessão:', sessionErr);
+          devError('Erro ao obter sessão:', sessionErr);
           router.push('/dashboard');
         }
       }, 500);
     } catch (err) {
-      console.error('Erro de autenticação:', err);
+      devError('Erro de autenticação:', err);
       setError('Falha na autenticação. Verifique suas credenciais ou tente novamente mais tarde.');
       setLoading(false);
     }
@@ -258,11 +302,12 @@ export default function LoginPage() {
                   required
                   value={formData.password}
                   onChange={handleChange}
+                  placeholder="Sua senha"
                 />
               </div>
 
               {error && (
-                <div className="rounded-md bg-red-50 p-3">
+                <div className="rounded-md bg-red-50 p-4">
                   <p className="text-sm text-red-500">{error}</p>
                 </div>
               )}
@@ -275,77 +320,91 @@ export default function LoginPage() {
               >
                 {loading ? 'Entrando...' : 'Entrar'}
               </Button>
-              <p className="text-center text-sm">
-                Não tem uma conta?{' '}
-                <Link href="/register" className="font-medium text-primary hover:underline">
-                  Registre-se
-                </Link>
-              </p>
+              <div className="text-center">
+                <p className="text-sm text-gray-600">
+                  Não tem uma conta?{' '}
+                  <Link href="/register" className="text-primary hover:underline">
+                    Registre-se
+                  </Link>
+                </p>
+              </div>
             </CardFooter>
           </form>
         </Card>
 
-        {/* Seção de login rápido para teste */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-sm">Login Rápido (Ambiente de Teste)</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="text-xs text-muted-foreground">
-              Use os botões abaixo para acessar o sistema com diferentes perfis
+        {/* Login rápido */}
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickLogin(UserRole.DEVELOPER)}
-                disabled={loading}
-              >
-                Desenvolvedor
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickLogin(UserRole.ADMIN)}
-                disabled={loading}
-              >
-                Administrador
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickLogin(UserRole.MANAGER)}
-                disabled={loading}
-              >
-                Gerente
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickLogin(UserRole.EMPLOYEE)}
-                disabled={loading}
-              >
-                Funcionário
-              </Button>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">{process.env.NODE_ENV === 'production' ? 'Login rápido para desenvolvedor' : 'Login rápido para teste'}</span>
             </div>
-            <div className="mt-3 pt-3 border-t text-center">
-              <p className="text-xs text-muted-foreground">
-                Se o login rápido não funcionar, você precisa inicializar o banco de dados:
-              </p>
-              <Link href="/setup" className="text-xs font-medium text-primary hover:underline">
-                Configurar Usuários de Demo
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          <div className="mt-6 grid gap-3">
+            {/* Sempre mostrar o botão de desenvolvedor */}
+            <button
+              type="button"
+              onClick={() => handleQuickLogin(UserRole.DEVELOPER)}
+              disabled={loading}
+              className="flex justify-center items-center px-4 py-2 border border-indigo-300 shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
+            >
+              Entrar como Desenvolvedor
+            </button>
+            
+            {/* Mostrar apenas em desenvolvimento */}
+            {process.env.NODE_ENV !== 'production' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin(UserRole.ADMIN)}
+                  disabled={loading}
+                  className="flex justify-center items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100"
+                >
+                  Entrar como Administrador
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin(UserRole.MANAGER)}
+                  disabled={loading}
+                  className="flex justify-center items-center px-4 py-2 border border-yellow-300 shadow-sm text-sm font-medium rounded-md text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
+                >
+                  Entrar como Gerente
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin(UserRole.EMPLOYEE)}
+                  disabled={loading}
+                  className="flex justify-center items-center px-4 py-2 border border-green-300 shadow-sm text-sm font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100"
+                >
+                  Entrar como Funcionário
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
-      
-      <Toast
-        message="Registro concluído com sucesso! Agora você pode fazer login."
-        type="success"
-        open={showSuccessToast}
-        onClose={() => setShowSuccessToast(false)}
-      />
+      {showSuccessToast && (
+        <Toast 
+          message="Registro concluído com sucesso! Agora você pode fazer login."
+          type="success"
+          open={showSuccessToast}
+          onClose={() => setShowSuccessToast(false)}
+        />
+      )}
     </div>
+  );
+}
+
+// Componente principal envolvido com Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Carregando...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 } 

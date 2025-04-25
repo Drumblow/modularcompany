@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { EyeIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from '@/components/ui/Toast';
+import { devLog, devWarn, devError } from '@/lib/logger';
 import { 
   Table, 
   TableHeader, 
@@ -63,7 +64,7 @@ export default function EmployeePaymentsPage() {
       setPayments(data);
       setError(null);
     } catch (err: any) {
-      console.error('Erro ao buscar pagamentos:', err);
+      devError('Erro ao buscar pagamentos:', err);
       setError(err.message || 'Não foi possível carregar os pagamentos');
     } finally {
       setLoading(false);
@@ -104,7 +105,7 @@ export default function EmployeePaymentsPage() {
         description: "Pagamento confirmado com sucesso!"
       });
     } catch (error: any) {
-      console.error('Erro ao confirmar pagamento:', error);
+      devError('Erro ao confirmar pagamento:', error);
       toast({
         title: "Erro",
         description: error.message || 'Erro ao confirmar pagamento'

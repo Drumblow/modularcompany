@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Toast } from '@/components/ui/Toast';
 import { UserRole } from '@/lib/utils';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 // Interface para usuários/funcionários
 interface Employee {
@@ -61,7 +62,7 @@ export default function ManagerEmployeesPage() {
       
       if (!response.ok) {
         if (response.status === 403) {
-          console.log('Acesso negado à API. Usando lista local.');
+          devLog('Acesso negado à API. Usando lista local.');
           // Em caso de erro de permissão, exibir uma mensagem amigável e retornar uma lista vazia
           setEmployees([]);
           return;
@@ -80,7 +81,7 @@ export default function ManagerEmployeesPage() {
       
       setEmployees(filteredEmployees);
     } catch (err: any) {
-      console.error('Erro ao buscar funcionários:', err);
+      devError('Erro ao buscar funcionários:', err);
       setError('Não foi possível carregar a lista de funcionários. Por favor, tente novamente mais tarde.');
       setEmployees([]);
     } finally {
@@ -202,7 +203,7 @@ export default function ManagerEmployeesPage() {
       setSuccessMessage('Funcionário excluído com sucesso!');
       setShowSuccessToast(true);
     } catch (err: any) {
-      console.error('Erro ao excluir funcionário:', err);
+      devError('Erro ao excluir funcionário:', err);
       setError(err.message || 'Ocorreu um erro ao excluir o funcionário');
     } finally {
       setLoading(false);

@@ -1,7 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
+import { devLog, devWarn, devError } from "@/lib/logger";
+
+// Funções de log do lado do servidor
+const serverLog = (message: string, data?: any) => {
+  if (process.env.NODE_ENV !== 'production') {
+    if (data !== undefined) {
+      devLog(message, data);
+    } else {
+      devLog(message);
+    }
+  }
+};
+
+const serverWarn = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devWarn(message, data);
+  } else {
+    devWarn(message);
+  }
+};
+
+const serverError = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devError(message, data);
+  } else {
+    devError(message);
+  }
+};
 
 // Definir interfaces para os tipos do Prisma que não estão sendo reconhecidos
 interface Payment {
@@ -196,7 +224,7 @@ export async function GET(
 
     return NextResponse.json(response);
   } catch (error: any) {
-    console.error('Erro ao calcular saldo do usuário:', error);
+    serverError('Erro ao calcular saldo do usuário:', error);
     return NextResponse.json(
       { message: 'Erro interno do servidor', error: error.message },
       { status: 500 }

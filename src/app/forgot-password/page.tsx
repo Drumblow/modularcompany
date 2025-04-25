@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/Card';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -24,7 +25,7 @@ export default function ForgotPasswordPage() {
       
       setSubmitted(true);
     } catch (err) {
-      console.error('Erro ao enviar email de recuperação:', err);
+      devError('Erro ao enviar email de recuperação:', err);
     } finally {
       setLoading(false);
     }

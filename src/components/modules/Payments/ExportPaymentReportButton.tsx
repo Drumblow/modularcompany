@@ -16,6 +16,7 @@ import {
   exportPaymentReportToPDF,
   exportPaymentReportToExcel
 } from '.';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 interface ExportPaymentReportButtonProps {
   title: string;
@@ -64,7 +65,7 @@ export function ExportPaymentReportButton({
       
       onExportSuccess('Relatório de pagamentos em PDF exportado com sucesso!');
     } catch (error) {
-      console.error('Erro ao exportar relatório em PDF:', error);
+      devError('Erro ao exportar relatório em PDF:', error);
       onExportError('Erro ao exportar relatório em PDF. Tente novamente.');
     } finally {
       setIsExporting(false);
@@ -89,7 +90,7 @@ export function ExportPaymentReportButton({
       
       onExportSuccess('Relatório de pagamentos em Excel exportado com sucesso!');
     } catch (error) {
-      console.error('Erro ao exportar relatório em Excel:', error);
+      devError('Erro ao exportar relatório em Excel:', error);
       onExportError('Erro ao exportar relatório em Excel. Tente novamente.');
     } finally {
       setIsExporting(false);

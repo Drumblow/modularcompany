@@ -59,7 +59,7 @@ O principal módulo implementado atualmente permite:
 
 - **Frontend**: Next.js 14, React 18, TypeScript 5, Tailwind CSS 3
 - **Backend**: API Routes do Next.js
-- **Banco de Dados**: Prisma ORM 5 com SQLite/PostgreSQL
+- **Banco de Dados**: Prisma ORM 5 com PostgreSQL (Neon)
 - **Autenticação**: NextAuth.js 4
 - **Relatórios**: jsPDF, ExcelJS
 - **UI/UX**: Componentes customizados com Tailwind

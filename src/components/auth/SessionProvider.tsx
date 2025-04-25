@@ -3,6 +3,7 @@
 import { SessionProvider as NextAuthSessionProvider } from 'next-auth/react';
 import { ReactNode, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { devLog } from '@/lib/logger';
 
 // Componente para rastreamento de sessão
 function SessionTracker() {
@@ -18,7 +19,7 @@ function SessionTracker() {
         role: session.user.role,
         companyId: session.user.companyId,
       }));
-      console.log('[SessionTracker] Informações da sessão salvas no localStorage:', session);
+      devLog('[SessionTracker] Informações da sessão salvas no localStorage:', session);
     }
   }, [session]);
 

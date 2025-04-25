@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 interface ToastProps {
   message: string;
@@ -49,7 +50,7 @@ export const toast = (options: ToastOptions) => {
       duration,
     });
   } else {
-    console.warn('Toast não está inicializado ainda');
+    devWarn('Toast não está inicializado ainda');
     // Fallback para alert se o toast não estiver pronto
     alert(`${type.toUpperCase()}: ${message}`);
   }

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Toast } from '@/components/ui/Toast';
 import { UserRole } from '@/lib/utils';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 // Interface para usuários
 interface User {
@@ -74,7 +75,7 @@ export default function DeveloperUsersPage() {
       const data = await response.json();
       setUsers(data);
     } catch (err: any) {
-      console.error('Erro ao carregar usuários:', err);
+      devError('Erro ao carregar usuários:', err);
       setError(err.message || 'Ocorreu um erro ao carregar os usuários');
     } finally {
       setLoading(false);
@@ -92,7 +93,7 @@ export default function DeveloperUsersPage() {
       const data = await response.json();
       setCompanies(data);
     } catch (err: any) {
-      console.error('Erro ao carregar empresas:', err);
+      devError('Erro ao carregar empresas:', err);
       setError(err.message || 'Ocorreu um erro ao carregar as empresas');
     }
   }, []);
@@ -212,7 +213,7 @@ export default function DeveloperUsersPage() {
       setSuccessMessage('Usuário excluído com sucesso!');
       setShowSuccessToast(true);
     } catch (err: any) {
-      console.error('Erro ao excluir usuário:', err);
+      devError('Erro ao excluir usuário:', err);
       setError(err.message || 'Ocorreu um erro ao excluir o usuário');
     } finally {
       setLoading(false);

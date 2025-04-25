@@ -1,8 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { z } from 'zod';
+import { devLog, devWarn, devError } from "@/lib/logger";
+
+// Funções de log do lado do servidor
+const serverLog = (message: string, data?: any) => {
+  if (process.env.NODE_ENV !== 'production') {
+    if (data !== undefined) {
+      devLog(message, data);
+    } else {
+      devLog(message);
+    }
+  }
+};
+
+const serverWarn = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devWarn(message, data);
+  } else {
+    devWarn(message);
+  }
+};
+
+const serverError = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devError(message, data);
+  } else {
+    devError(message);
+  }
+};
 
 // Schema para validar a criação de notificações
 const createNotificationSchema = z.object({
@@ -64,7 +92,7 @@ export async function GET(req: NextRequest) {
       unreadCount,
     });
   } catch (error: any) {
-    console.error('Erro ao listar notificações:', error);
+    serverError('Erro ao listar notificações:', error);
     return NextResponse.json(
       { message: 'Erro interno do servidor', error: error.message },
       { status: 500 }
@@ -139,7 +167,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error('Erro ao criar notificação:', error);
+    serverError('Erro ao criar notificação:', error);
     return NextResponse.json(
       { message: 'Erro interno do servidor', error: error.message },
       { status: 500 }

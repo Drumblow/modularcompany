@@ -1,8 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { z } from "zod";
+import { devLog, devWarn, devError } from "@/lib/logger";
+
+// Funções de log do lado do servidor
+const serverLog = (message: string, data?: any) => {
+  if (process.env.NODE_ENV !== 'production') {
+    if (data !== undefined) {
+      devLog(message, data);
+    } else {
+      devLog(message);
+    }
+  }
+};
+
+const serverWarn = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devWarn(message, data);
+  } else {
+    devWarn(message);
+  }
+};
+
+const serverError = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devError(message, data);
+  } else {
+    devError(message);
+  }
+};
 
 // Schema de validação para criação de time entry
 const timeEntrySchema = z.object({
@@ -26,7 +54,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.log("[API time-entries GET] Session user:", {
+    serverLog("[API time-entries GET] Session user:", {
       id: session.user.id,
       role: session.user.role,
       companyId: session.user.companyId
@@ -39,7 +67,7 @@ export async function GET(req: NextRequest) {
     const unpaid = searchParams.get("unpaid") === "true";
     const approvedParam = searchParams.get("approved");
 
-    console.log("[API time-entries GET] Search params:", {
+    serverLog("[API time-entries GET] Search params:", {
       userId,
       startDate,
       endDate,
@@ -50,7 +78,7 @@ export async function GET(req: NextRequest) {
     // Construir filtro baseado nos parâmetros
     const filter: any = {};
     
-    console.log("[API time-entries GET] Configurando filtros com parâmetros:", {
+    serverLog("[API time-entries GET] Configurando filtros com parâmetros:", {
       userId,
       startDate,
       endDate,
@@ -63,10 +91,10 @@ export async function GET(req: NextRequest) {
 
     // Se um userId específico foi solicitado
     if (userId) {
-      console.log(`[API time-entries GET] Foi solicitado um userId específico: ${userId}`);
+      serverLog(`[API time-entries GET] Foi solicitado um userId específico: ${userId}`);
       // Verificar se o usuário está buscando suas próprias entradas
       if (userId === session.user.id) {
-        console.log(`[API time-entries GET] Usuário buscando suas próprias entradas`);
+        serverLog(`[API time-entries GET] Usuário buscando suas próprias entradas`);
         // Sempre permitir que um usuário veja suas próprias entradas, independente do papel
         filter.userId = userId;
       } 
@@ -76,7 +104,7 @@ export async function GET(req: NextRequest) {
         filter.user = {
           companyId: session.user.companyId
         };
-        console.log("[API time-entries GET] MANAGER filtrando entradas de um usuário específico da mesma empresa:", filter);
+        serverLog("[API time-entries GET] MANAGER filtrando entradas de um usuário específico da mesma empresa:", filter);
       }
       // Para admins, verificar se o usuário solicitado é da mesma empresa
       else if (session.user.role === "ADMIN" && session.user.companyId) {
@@ -84,25 +112,25 @@ export async function GET(req: NextRequest) {
         filter.user = {
           companyId: session.user.companyId
         };
-        console.log("[API time-entries GET] ADMIN filtrando entradas de um usuário específico da mesma empresa:", filter);
+        serverLog("[API time-entries GET] ADMIN filtrando entradas de um usuário específico da mesma empresa:", filter);
       }
       // Desenvolvedores podem ver tudo
       else if (session.user.role === "DEVELOPER") {
         filter.userId = userId;
-        console.log("[API time-entries GET] DEVELOPER filtrando entradas de um usuário específico:", filter);
+        serverLog("[API time-entries GET] DEVELOPER filtrando entradas de um usuário específico:", filter);
       }
       // Funcionários só podem ver suas próprias entradas
       else if (session.user.role === "EMPLOYEE") {
         // Verificar se está tentando acessar entradas de outro usuário
         if (userId !== session.user.id) {
-          console.log("[API time-entries GET] EMPLOYEE tentando acessar entradas de outro usuário - negado");
+          serverLog("[API time-entries GET] EMPLOYEE tentando acessar entradas de outro usuário - negado");
           return NextResponse.json(
             { message: "Acesso negado. Você só pode ver suas próprias entradas." },
             { status: 403 }
           );
         }
         filter.userId = session.user.id;
-        console.log("[API time-entries GET] EMPLOYEE filtrando suas próprias entradas:", filter);
+        serverLog("[API time-entries GET] EMPLOYEE filtrando suas próprias entradas:", filter);
       }
     } 
     // Se nenhum userId específico foi solicitado
@@ -110,39 +138,39 @@ export async function GET(req: NextRequest) {
       // Se for funcionário, mostrar apenas seus próprios registros
       if (session.user.role === "EMPLOYEE") {
         filter.userId = session.user.id;
-        console.log("[API time-entries GET] EMPLOYEE - mostrando apenas entradas próprias:", filter);
+        serverLog("[API time-entries GET] EMPLOYEE - mostrando apenas entradas próprias:", filter);
       } 
       // Se for gerente, mostrar apenas usuários da mesma empresa
       else if (session.user.role === "MANAGER" && session.user.companyId) {
         filter.user = {
           companyId: session.user.companyId
         };
-        console.log("[API time-entries GET] MANAGER - mostrando todas as entradas da empresa:", filter);
+        serverLog("[API time-entries GET] MANAGER - mostrando todas as entradas da empresa:", filter);
       }
       // Se for admin, mostrar apenas usuários da mesma empresa
       else if (session.user.role === "ADMIN" && session.user.companyId) {
         filter.user = {
           companyId: session.user.companyId
         };
-        console.log("[API time-entries GET] ADMIN - mostrando todas as entradas da empresa:", filter);
+        serverLog("[API time-entries GET] ADMIN - mostrando todas as entradas da empresa:", filter);
       }
       // Se for desenvolvedor, pode ver todos
       else if (session.user.role === "DEVELOPER") {
-        console.log("[API time-entries GET] DEVELOPER - mostrando todas as entradas:", filter);
+        serverLog("[API time-entries GET] DEVELOPER - mostrando todas as entradas:", filter);
       }
       else {
         // Caso padrão: mostrar apenas seus próprios registros
         filter.userId = session.user.id;
-        console.log("[API time-entries GET] Caso padrão - mostrando apenas entradas próprias:", filter);
+        serverLog("[API time-entries GET] Caso padrão - mostrando apenas entradas próprias:", filter);
       }
     }
 
     // Filtro para aprovados - só aplicar se for explicitamente solicitado
     if (approvedParam !== null) {
       filter.approved = approvedParam === "true";
-      console.log(`[API time-entries GET] Applying explicit approved filter: ${filter.approved}`);
+      serverLog(`[API time-entries GET] Applying explicit approved filter: ${filter.approved}`);
     } else {
-      console.log(`[API time-entries GET] No approved filter applied`);
+      serverLog(`[API time-entries GET] No approved filter applied`);
     }
 
     // Filtros de data
@@ -165,7 +193,7 @@ export async function GET(req: NextRequest) {
     
     if (unpaid) {
       // Se o filtro unpaid estiver ativo, buscar apenas entradas que NÃO estão associadas a um pagamento
-      console.log("[API time-entries GET] Filtering for unpaid entries with filter:", filter);
+      serverLog("[API time-entries GET] Filtering for unpaid entries with filter:", filter);
       timeEntries = await prisma.$transaction(async (tx) => {
         // Primeiro, buscar todas as entradas que estão em pagamentos
         const paidEntries = await tx.paymentTimeEntry.findMany({
@@ -175,7 +203,7 @@ export async function GET(req: NextRequest) {
         });
         
         const paidEntryIds = paidEntries.map(entry => entry.timeEntryId);
-        console.log(`[API time-entries GET] Found ${paidEntryIds.length} paid entries`);
+        serverLog(`[API time-entries GET] Found ${paidEntryIds.length} paid entries`);
         
         // Depois, buscar todas as entradas que não estão nessa lista
         return tx.timeEntry.findMany({
@@ -209,7 +237,7 @@ export async function GET(req: NextRequest) {
       });
     } else {
       // Busca normal sem filtro de pagamento
-      console.log("[API time-entries GET] Regular search with filter:", filter);
+      serverLog("[API time-entries GET] Regular search with filter:", filter);
       timeEntries = await prisma.timeEntry.findMany({
         where: filter,
         orderBy: {
@@ -235,7 +263,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    console.log(`[API time-entries GET] Found ${timeEntries.length} entries before formatting`);
+    serverLog(`[API time-entries GET] Found ${timeEntries.length} entries before formatting`);
 
     // Formatar os dados para o cliente
     const formattedEntries = timeEntries.map(entry => {
@@ -280,10 +308,10 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    console.log(`[API time-entries GET] Returning ${formattedEntries.length} formatted entries`);
+    serverLog(`[API time-entries GET] Returning ${formattedEntries.length} formatted entries`);
     return NextResponse.json(formattedEntries);
   } catch (error: any) {
-    console.error("Erro ao buscar registros de horas:", error);
+    serverError("Erro ao buscar registros de horas:", error);
     return NextResponse.json(
       { message: "Erro interno do servidor", error: error.message },
       { status: 500 }
@@ -321,7 +349,7 @@ export async function POST(req: NextRequest) {
     const endDateTime = new Date(`${date}T${endTime}:00`);
     
     // Buscar registros existentes para este usuário na mesma data
-    console.log(`[DETECÇÃO DE CONFLITO] Buscando registros existentes para userId=${session.user.id} na data=${date}`);
+    serverLog(`[DETECÇÃO DE CONFLITO] Buscando registros existentes para userId=${session.user.id} na data=${date}`);
     
     // CORREÇÃO: Simplificar a lógica para buscar TODOS os registros na mesma data,
     // independente do status de aprovação ou rejeição
@@ -333,18 +361,18 @@ export async function POST(req: NextRequest) {
       }
     });
     
-    console.log(`[DETECÇÃO DE CONFLITO] Encontrados ${existingEntries.length} registros existentes para verificação`);
-    console.log(`[DETECÇÃO DE CONFLITO] Detalhes do novo registro: data=${date}, startTime=${startTime}, endTime=${endTime}, project=${project || 'Sem projeto'}`);
+    serverLog(`[DETECÇÃO DE CONFLITO] Encontrados ${existingEntries.length} registros existentes para verificação`);
+    serverLog(`[DETECÇÃO DE CONFLITO] Detalhes do novo registro: data=${date}, startTime=${startTime}, endTime=${endTime}, project=${project || 'Sem projeto'}`);
     
     for (const entry of existingEntries) {
-      console.log(`[DETECÇÃO DE CONFLITO] Verificando registro: id=${entry.id}, data=${entry.date.toISOString().split('T')[0]}, startTime=${entry.startTime.getHours().toString().padStart(2, '0')}:${entry.startTime.getMinutes().toString().padStart(2, '0')}, endTime=${entry.endTime.getHours().toString().padStart(2, '0')}:${entry.endTime.getMinutes().toString().padStart(2, '0')}, approved=${entry.approved}, rejected=${entry.rejected}, project=${entry.project || 'Sem projeto'}`);
+      serverLog(`[DETECÇÃO DE CONFLITO] Verificando registro: id=${entry.id}, data=${entry.date.toISOString().split('T')[0]}, startTime=${entry.startTime.getHours().toString().padStart(2, '0')}:${entry.startTime.getMinutes().toString().padStart(2, '0')}, endTime=${entry.endTime.getHours().toString().padStart(2, '0')}:${entry.endTime.getMinutes().toString().padStart(2, '0')}, approved=${entry.approved}, rejected=${entry.rejected}, project=${entry.project || 'Sem projeto'}`);
     }
     
     // Verificar sobreposições
     const conflictingEntries = existingEntries.filter(entry => {
       // Se o registro for rejeitado, não precisa incluir na verificação
       if (entry.rejected === true) {
-        console.log(`[DETECÇÃO DE CONFLITO] Ignorando registro ${entry.id} pois foi rejeitado`);
+        serverLog(`[DETECÇÃO DE CONFLITO] Ignorando registro ${entry.id} pois foi rejeitado`);
         return false;
       }
       
@@ -365,9 +393,9 @@ export async function POST(req: NextRequest) {
       const newStartMinutes = newStartHour * 60 + newStartMinute;
       const newEndMinutes = newEndHour * 60 + newEndMinute;
       
-      console.log(`[DETECÇÃO DE CONFLITO] Comparando novo registro ${newStartHour}:${newStartMinute}-${newEndHour}:${newEndMinute} com existente ${entryStartHour}:${entryStartMinute}-${entryEndHour}:${entryEndMinute}`);
-      console.log(`[DETECÇÃO DE CONFLITO] Em minutos: Novo [${newStartMinutes}-${newEndMinutes}], Existente [${entryStartMinutes}-${entryEndMinutes}]`);
-      console.log(`[DETECÇÃO DE CONFLITO] Status do registro existente: approved=${entry.approved}, rejected=${entry.rejected}`);
+      serverLog(`[DETECÇÃO DE CONFLITO] Comparando novo registro ${newStartHour}:${newStartMinute}-${newEndHour}:${newEndMinute} com existente ${entryStartHour}:${entryStartMinute}-${entryEndHour}:${entryEndMinute}`);
+      serverLog(`[DETECÇÃO DE CONFLITO] Em minutos: Novo [${newStartMinutes}-${newEndMinutes}], Existente [${entryStartMinutes}-${entryEndMinutes}]`);
+      serverLog(`[DETECÇÃO DE CONFLITO] Status do registro existente: approved=${entry.approved}, rejected=${entry.rejected}`);
       
       // Caso 1: Novo horário começa durante um registro existente
       const case1 = newStartMinutes >= entryStartMinutes && newStartMinutes < entryEndMinutes;
@@ -382,28 +410,28 @@ export async function POST(req: NextRequest) {
       const hasOverlap = case1 || case2 || case3 || case4;
       
       if (hasOverlap) {
-        console.log(`[DETECÇÃO DE CONFLITO] CONFLITO DETECTADO com registro ${entry.id}!`);
-        console.log(`[DETECÇÃO DE CONFLITO] Status do registro em conflito: approved=${entry.approved}, rejected=${entry.rejected}`);
+        serverLog(`[DETECÇÃO DE CONFLITO] CONFLITO DETECTADO com registro ${entry.id}!`);
+        serverLog(`[DETECÇÃO DE CONFLITO] Status do registro em conflito: approved=${entry.approved}, rejected=${entry.rejected}`);
         
-        if (case1) console.log(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário começa durante um registro existente`);
-        if (case2) console.log(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário termina durante um registro existente`);
-        if (case3) console.log(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário engloba um registro existente`);
-        if (case4) console.log(`[DETECÇÃO DE CONFLITO] Motivo: Registro existente engloba completamente o novo horário`);
+        if (case1) serverLog(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário começa durante um registro existente`);
+        if (case2) serverLog(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário termina durante um registro existente`);
+        if (case3) serverLog(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário engloba um registro existente`);
+        if (case4) serverLog(`[DETECÇÃO DE CONFLITO] Motivo: Registro existente engloba completamente o novo horário`);
       } else {
-        console.log(`[DETECÇÃO DE CONFLITO] Sem sobreposição entre os horários`);
+        serverLog(`[DETECÇÃO DE CONFLITO] Sem sobreposição entre os horários`);
       }
       
       return hasOverlap;
     });
 
     // Se houver conflitos, FORÇAR este bloco a ser executado
-    console.log(`[DETECÇÃO DE CONFLITO] Registros conflitantes encontrados: ${conflictingEntries.length}`);
+    serverLog(`[DETECÇÃO DE CONFLITO] Registros conflitantes encontrados: ${conflictingEntries.length}`);
     
     // Se houver conflitos, retornar erro com os detalhes
     if (conflictingEntries.length > 0) {
-      console.log(`[DETECÇÃO DE CONFLITO] ======== BLOQUEANDO CRIAÇÃO DE NOVO REGISTRO ========`);
-      console.log(`[DETECÇÃO DE CONFLITO] Motivo: ${conflictingEntries.length} conflitos de horário detectados`);
-      console.log(`[DETECÇÃO DE CONFLITO] Horário solicitado: ${date} ${startTime}-${endTime}`);
+      serverLog(`[DETECÇÃO DE CONFLITO] ======== BLOQUEANDO CRIAÇÃO DE NOVO REGISTRO ========`);
+      serverLog(`[DETECÇÃO DE CONFLITO] Motivo: ${conflictingEntries.length} conflitos de horário detectados`);
+      serverLog(`[DETECÇÃO DE CONFLITO] Horário solicitado: ${date} ${startTime}-${endTime}`);
       
       const conflicts = conflictingEntries.map(entry => {
         const entryStartHour = entry.startTime.getHours();
@@ -448,7 +476,7 @@ export async function POST(req: NextRequest) {
           overlapPeriod: `${overlapStartFormatted} - ${overlapEndFormatted}`
         };
         
-        console.log(`[DETECÇÃO DE CONFLITO] Detalhe do conflito:`, conflictInfo);
+        serverLog(`[DETECÇÃO DE CONFLITO] Detalhe do conflito:`, conflictInfo);
         return conflictInfo;
       });
       
@@ -505,7 +533,7 @@ export async function POST(req: NextRequest) {
                 relatedType: "timeEntry",
               }
             }).catch(error => {
-              console.error(`Erro ao criar notificação para gerente/admin ${manager.id}:`, error);
+              serverError(`Erro ao criar notificação para gerente/admin ${manager.id}:`, error);
               return null; // Continuar mesmo se houver falha em uma notificação
             })
           );
@@ -513,12 +541,12 @@ export async function POST(req: NextRequest) {
           // Executar criação de notificações em paralelo
           await Promise.all(createNotificationsPromises);
         } catch (innerError) {
-          console.error('Erro durante criação de notificações:', innerError);
+          serverError('Erro durante criação de notificações:', innerError);
           // Não interrompe o fluxo principal
         }
       }
     } catch (notificationError) {
-      console.error('Erro ao buscar gerentes e administradores:', notificationError);
+      serverError('Erro ao buscar gerentes e administradores:', notificationError);
       // Não impede o fluxo principal se as notificações falharem
     }
 
@@ -538,7 +566,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(formattedEntry, { status: 201 });
   } catch (error: any) {
-    console.error("Erro ao criar registro de horas:", error);
+    serverError("Erro ao criar registro de horas:", error);
     return NextResponse.json(
       { message: "Erro interno do servidor", error: error.message },
       { status: 500 }

@@ -11,6 +11,7 @@ import { LocalDate, LocalTime } from '@/components/ui/LocalDate';
 import { useSession } from 'next-auth/react';
 import { Alert } from '@/components/ui/Alert';
 import { toast } from '@/components/ui/Toast';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 interface TimeEntryListProps {
   userId?: string;
@@ -50,7 +51,7 @@ export const TimeEntryList: React.FC<TimeEntryListProps> = ({
   } = useTimeEntries();
 
   useEffect(() => {
-    console.log('TimeEntryList - Component mounted or userId changed', { userId, path: window.location.pathname });
+    devLog('TimeEntryList - Component mounted or userId changed', { userId, path: window.location.pathname });
     
     // Verificando se estamos na aba "Meus Registros"
     const isMyEntriesTab = window.location.pathname.includes('my-entries') || 
@@ -58,16 +59,16 @@ export const TimeEntryList: React.FC<TimeEntryListProps> = ({
                           document.querySelector('[data-state="active"][id*="my-entries"]') !== null;
     
     if (userId) {
-      console.log(`TimeEntryList - Buscando entradas para userId específico: ${userId}`);
+      devLog(`TimeEntryList - Buscando entradas para userId específico: ${userId}`);
       // Se um userId foi explicitamente fornecido, usamos ele
       fetchEntries({ userId, startDate, endDate });
     } else if (isMyEntriesTab && session?.user?.id) {
       // Se estamos na aba "Meus Registros" e não tem userId, usamos o ID do usuário logado
-      console.log('Auto-applying current user ID filter:', session.user.id);
+      devLog('Auto-applying current user ID filter:', session.user.id);
       fetchEntries({ userId: session.user.id, startDate, endDate });
     } else {
       // Caso contrário, buscamos sem filtro de userId
-      console.log('TimeEntryList - Buscando todas as entradas sem filtro de usuário');
+      devLog('TimeEntryList - Buscando todas as entradas sem filtro de usuário');
       fetchEntries({ startDate, endDate });
     }
   }, [userId, startDate, endDate, fetchEntries, session?.user?.id]);
@@ -77,7 +78,7 @@ export const TimeEntryList: React.FC<TimeEntryListProps> = ({
   const filteredEntries = userId ? entries.filter(entry => entry.userId === userId) : entries;
   
   useEffect(() => {
-    console.log('TimeEntryList - Entries updated:', filteredEntries);
+    devLog('TimeEntryList - Entries updated:', filteredEntries);
   }, [filteredEntries]);
 
   // Gerenciar a edição de uma entrada
@@ -101,10 +102,10 @@ export const TimeEntryList: React.FC<TimeEntryListProps> = ({
   // Realizar exclusão
   const handleDelete = async (entryId: string) => {
     try {
-      console.log(`Tentando excluir entrada: ${entryId}`);
+      devLog(`Tentando excluir entrada: ${entryId}`);
       const success = await deleteEntry(entryId);
       if (success) {
-        console.log(`Exclusão bem-sucedida para entrada: ${entryId}`);
+        devLog(`Exclusão bem-sucedida para entrada: ${entryId}`);
         toast({
           description: "O registro de horas foi excluído com sucesso.",
           type: "success"
@@ -113,14 +114,14 @@ export const TimeEntryList: React.FC<TimeEntryListProps> = ({
           onSuccess();
         }
       } else {
-        console.error(`Falha na exclusão da entrada: ${entryId}`);
+        devError(`Falha na exclusão da entrada: ${entryId}`);
         toast({
           description: "Não foi possível excluir o registro. Tente novamente.",
           type: "error"
         });
       }
     } catch (error) {
-      console.error("Erro ao excluir registro:", error);
+      devError("Erro ao excluir registro:", error);
       toast({
         description: "Ocorreu um erro ao excluir o registro.",
         type: "error"
@@ -147,19 +148,19 @@ export const TimeEntryList: React.FC<TimeEntryListProps> = ({
 
   // Log para verificar entradas carregadas
   useEffect(() => {
-    console.log(`[TimeEntryList] Entradas carregadas (${entries.length}):`, entries);
-    console.log(`[TimeEntryList] Parâmetros: userId=${userId}, startDate=${startDate}, endDate=${endDate}`);
+    devLog(`[TimeEntryList] Entradas carregadas (${entries.length}):`, entries);
+    devLog(`[TimeEntryList] Parâmetros: userId=${userId}, startDate=${startDate}, endDate=${endDate}`);
     
     const sessionInfo = localStorage.getItem('sessionInfo');
     if (sessionInfo) {
       try {
         const session = JSON.parse(sessionInfo);
-        console.log('[TimeEntryList] Informações da sessão:', session);
+        devLog('[TimeEntryList] Informações da sessão:', session);
       } catch (e) {
-        console.error('[TimeEntryList] Erro ao analisar informações da sessão:', e);
+        devError('[TimeEntryList] Erro ao analisar informações da sessão:', e);
       }
     } else {
-      console.log('[TimeEntryList] Nenhuma informação de sessão encontrada no localStorage');
+      devLog('[TimeEntryList] Nenhuma informação de sessão encontrada no localStorage');
     }
   }, [entries, userId, startDate, endDate]);
 

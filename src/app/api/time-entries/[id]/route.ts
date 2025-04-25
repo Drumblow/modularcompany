@@ -1,8 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { z } from "zod";
+import { devLog, devWarn, devError } from "@/lib/logger";
+
+// Funções de log do lado do servidor
+const serverLog = (message: string, data?: any) => {
+  if (process.env.NODE_ENV !== 'production') {
+    if (data !== undefined) {
+      devLog(message, data);
+    } else {
+      devLog(message);
+    }
+  }
+};
+
+const serverWarn = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devWarn(message, data);
+  } else {
+    devWarn(message);
+  }
+};
+
+const serverError = (message: string, data?: any) => {
+  if (data !== undefined) {
+    devError(message, data);
+  } else {
+    devError(message);
+  }
+};
 
 // Schema de validação para atualização de time entry
 const timeEntryUpdateSchema = z.object({
@@ -93,7 +121,7 @@ export async function GET(
 
     return NextResponse.json(formattedEntry);
   } catch (error: any) {
-    console.error("Erro ao buscar registro de horas:", error);
+    serverError("Erro ao buscar registro de horas:", error);
     return NextResponse.json(
       { message: "Erro interno do servidor", error: error.message },
       { status: 500 }
@@ -184,9 +212,9 @@ export async function PUT(
       }
     });
     
-    console.log(`[ATUALIZAÇÃO - DETECÇÃO DE CONFLITO] Encontrados ${existingEntries.length} registros existentes para verificação`);
+    serverLog(`[ATUALIZAÇÃO - DETECÇÃO DE CONFLITO] Encontrados ${existingEntries.length} registros existentes para verificação`);
     existingEntries.forEach((entry, index) => {
-      console.log(`[ATUALIZAÇÃO - DETECÇÃO DE CONFLITO] Registro ${index + 1}: data=${entry.date.toISOString().split('T')[0]}, startTime=${entry.startTime.getHours().toString().padStart(2, '0')}:${entry.startTime.getMinutes().toString().padStart(2, '0')}, endTime=${entry.endTime.getHours().toString().padStart(2, '0')}:${entry.endTime.getMinutes().toString().padStart(2, '0')}, approved=${entry.approved}, rejected=${entry.rejected}`);
+      serverLog(`[ATUALIZAÇÃO - DETECÇÃO DE CONFLITO] Registro ${index + 1}: data=${entry.date.toISOString().split('T')[0]}, startTime=${entry.startTime.getHours().toString().padStart(2, '0')}:${entry.startTime.getMinutes().toString().padStart(2, '0')}, endTime=${entry.endTime.getHours().toString().padStart(2, '0')}:${entry.endTime.getMinutes().toString().padStart(2, '0')}, approved=${entry.approved}, rejected=${entry.rejected}`);
     });
     
     // Verificar sobreposições
@@ -196,7 +224,7 @@ export async function PUT(
       
       // Se o registro for rejeitado, não precisa incluir na verificação
       if (entry.rejected === true) {
-        console.log(`[DETECÇÃO DE CONFLITO] Ignorando registro ${entry.id} pois foi rejeitado`);
+        serverLog(`[DETECÇÃO DE CONFLITO] Ignorando registro ${entry.id} pois foi rejeitado`);
         return false;
       }
       
@@ -217,9 +245,9 @@ export async function PUT(
       const newStartMinutes = newStartHour * 60 + newStartMinute;
       const newEndMinutes = newEndHour * 60 + newEndMinute;
       
-      console.log(`[DETECÇÃO DE CONFLITO] Comparando registro editado ${newStartHour}:${newStartMinute}-${newEndHour}:${newEndMinute} com existente ${entryStartHour}:${entryStartMinute}-${entryEndHour}:${entryEndMinute}`);
-      console.log(`[DETECÇÃO DE CONFLITO] Em minutos: Editado [${newStartMinutes}-${newEndMinutes}], Existente [${entryStartMinutes}-${entryEndMinutes}]`);
-      console.log(`[DETECÇÃO DE CONFLITO] Status do registro existente: approved=${entry.approved}, rejected=${entry.rejected}`);
+      serverLog(`[DETECÇÃO DE CONFLITO] Comparando registro editado ${newStartHour}:${newStartMinute}-${newEndHour}:${newEndMinute} com existente ${entryStartHour}:${entryStartMinute}-${entryEndHour}:${entryEndMinute}`);
+      serverLog(`[DETECÇÃO DE CONFLITO] Em minutos: Editado [${newStartMinutes}-${newEndMinutes}], Existente [${entryStartMinutes}-${entryEndMinutes}]`);
+      serverLog(`[DETECÇÃO DE CONFLITO] Status do registro existente: approved=${entry.approved}, rejected=${entry.rejected}`);
       
       // Caso 1: Novo horário começa durante um registro existente
       const case1 = newStartMinutes >= entryStartMinutes && newStartMinutes < entryEndMinutes;
@@ -233,15 +261,15 @@ export async function PUT(
       const hasOverlap = case1 || case2 || case3 || case4;
       
       if (hasOverlap) {
-        console.log(`[DETECÇÃO DE CONFLITO] CONFLITO DETECTADO entre [${newStartMinutes}-${newEndMinutes}] e [${entryStartMinutes}-${entryEndMinutes}]`);
-        console.log(`[DETECÇÃO DE CONFLITO] Status do registro em conflito: approved=${entry.approved}, rejected=${entry.rejected}`);
+        serverLog(`[DETECÇÃO DE CONFLITO] CONFLITO DETECTADO entre [${newStartMinutes}-${newEndMinutes}] e [${entryStartMinutes}-${entryEndMinutes}]`);
+        serverLog(`[DETECÇÃO DE CONFLITO] Status do registro em conflito: approved=${entry.approved}, rejected=${entry.rejected}`);
         
-        if (case1) console.log(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário começa durante um registro existente`);
-        if (case2) console.log(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário termina durante um registro existente`);
-        if (case3) console.log(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário engloba um registro existente`);
-        if (case4) console.log(`[DETECÇÃO DE CONFLITO] Motivo: Registro existente engloba completamente o novo horário`);
+        if (case1) serverLog(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário começa durante um registro existente`);
+        if (case2) serverLog(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário termina durante um registro existente`);
+        if (case3) serverLog(`[DETECÇÃO DE CONFLITO] Motivo: Novo horário engloba um registro existente`);
+        if (case4) serverLog(`[DETECÇÃO DE CONFLITO] Motivo: Registro existente engloba completamente o novo horário`);
       } else {
-        console.log(`[DETECÇÃO DE CONFLITO] Sem sobreposição entre os horários`);
+        serverLog(`[DETECÇÃO DE CONFLITO] Sem sobreposição entre os horários`);
       }
       
       return hasOverlap;
@@ -249,9 +277,9 @@ export async function PUT(
     
     // Se houver conflitos, retornar erro com os detalhes
     if (conflictingEntries.length > 0) {
-      console.log(`[DETECÇÃO DE CONFLITO] ======== BLOQUEANDO ATUALIZAÇÃO DE REGISTRO ========`);
-      console.log(`[DETECÇÃO DE CONFLITO] Motivo: ${conflictingEntries.length} conflitos de horário detectados`);
-      console.log(`[DETECÇÃO DE CONFLITO] Horário solicitado: ${dateToUse} ${startTimeToUse}-${endTimeToUse}`);
+      serverLog(`[DETECÇÃO DE CONFLITO] ======== BLOQUEANDO ATUALIZAÇÃO DE REGISTRO ========`);
+      serverLog(`[DETECÇÃO DE CONFLITO] Motivo: ${conflictingEntries.length} conflitos de horário detectados`);
+      serverLog(`[DETECÇÃO DE CONFLITO] Horário solicitado: ${dateToUse} ${startTimeToUse}-${endTimeToUse}`);
       
       const conflicts = conflictingEntries.map(entry => {
         const entryStartHour = entry.startTime.getHours();
@@ -296,7 +324,7 @@ export async function PUT(
           overlapPeriod: `${overlapStartFormatted} - ${overlapEndFormatted}`
         };
         
-        console.log(`[DETECÇÃO DE CONFLITO] Detalhe do conflito:`, conflictInfo);
+        serverLog(`[DETECÇÃO DE CONFLITO] Detalhe do conflito:`, conflictInfo);
         return conflictInfo;
       });
       
@@ -355,7 +383,7 @@ export async function PUT(
 
     return NextResponse.json(formattedEntry);
   } catch (error: any) {
-    console.error("Erro ao atualizar registro de horas:", error);
+    serverError("Erro ao atualizar registro de horas:", error);
     return NextResponse.json(
       { message: "Erro interno do servidor", error: error.message },
       { status: 500 }
@@ -369,19 +397,19 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log(`[API DELETE time-entry] Iniciando exclusão para ID: ${params.id}`);
+    serverLog(`[API DELETE time-entry] Iniciando exclusão para ID: ${params.id}`);
     
     const session = await getServerSession(authOptions);
     
     if (!session) {
-      console.log(`[API DELETE time-entry] Sessão não encontrada, não autorizado`);
+      serverLog(`[API DELETE time-entry] Sessão não encontrada, não autorizado`);
       return NextResponse.json(
         { message: "Não autorizado" },
         { status: 401 }
       );
     }
 
-    console.log(`[API DELETE time-entry] Sessão do usuário:`, {
+    serverLog(`[API DELETE time-entry] Sessão do usuário:`, {
       id: session.user.id,
       role: session.user.role,
       companyId: session.user.companyId
@@ -400,14 +428,14 @@ export async function DELETE(
     });
 
     if (!existingEntry) {
-      console.log(`[API DELETE time-entry] Registro não encontrado para ID: ${params.id}`);
+      serverLog(`[API DELETE time-entry] Registro não encontrado para ID: ${params.id}`);
       return NextResponse.json(
         { message: "Registro não encontrado" },
         { status: 404 }
       );
     }
 
-    console.log(`[API DELETE time-entry] Registro encontrado:`, {
+    serverLog(`[API DELETE time-entry] Registro encontrado:`, {
       id: existingEntry.id,
       userId: existingEntry.userId,
       userCompanyId: existingEntry.user.companyId,
@@ -423,7 +451,7 @@ export async function DELETE(
       session.user.role === "ADMIN" || // Admin pode tudo
       (session.user.role === "MANAGER" && session.user.companyId === existingEntry.user.companyId); // Gerente da mesma empresa
 
-    console.log(`[API DELETE time-entry] Verificação de permissões:`, {
+    serverLog(`[API DELETE time-entry] Verificação de permissões:`, {
       isOwnEntry: session.user.id === existingEntry.userId,
       isDeveloper: session.user.role === "DEVELOPER",
       isAdmin: session.user.role === "ADMIN",
@@ -432,7 +460,7 @@ export async function DELETE(
     });
 
     if (!canDelete) {
-      console.log(`[API DELETE time-entry] Acesso negado para usuário ${session.user.id} com papel ${session.user.role}`);
+      serverLog(`[API DELETE time-entry] Acesso negado para usuário ${session.user.id} com papel ${session.user.role}`);
       return NextResponse.json(
         { message: "Acesso negado" },
         { status: 403 }
@@ -445,7 +473,7 @@ export async function DELETE(
     });
 
     if (paymentTimeEntry) {
-      console.log(`[API DELETE time-entry] Registro já está associado a um pagamento, ID: ${paymentTimeEntry.paymentId}`);
+      serverLog(`[API DELETE time-entry] Registro já está associado a um pagamento, ID: ${paymentTimeEntry.paymentId}`);
       return NextResponse.json(
         { message: "Não é possível excluir um registro que já está em um pagamento" },
         { status: 400 }
@@ -457,13 +485,13 @@ export async function DELETE(
       where: { id: params.id }
     });
 
-    console.log(`[API DELETE time-entry] Registro excluído com sucesso: ${params.id}`);
+    serverLog(`[API DELETE time-entry] Registro excluído com sucesso: ${params.id}`);
     return NextResponse.json(
       { message: "Registro excluído com sucesso" },
       { status: 200 }
     );
   } catch (error: any) {
-    console.error(`[API DELETE time-entry] Erro ao excluir registro: ${error.message}`, error);
+    serverError(`[API DELETE time-entry] Erro ao excluir registro: ${error.message}`, error);
     return NextResponse.json(
       { message: "Erro interno do servidor", error: error.message },
       { status: 500 }

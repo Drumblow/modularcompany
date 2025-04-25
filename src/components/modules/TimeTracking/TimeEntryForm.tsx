@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/Card';
 import { useTimeEntries, TimeEntryFormData } from '@/hooks/useTimeEntries';
 import { Toast } from '@/components/ui/Toast';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 interface TimeEntryFormProps {
   onSuccess?: () => void;
@@ -97,7 +98,7 @@ export function TimeEntryForm({
         }
       }
     } catch (err: any) {
-      console.error('Erro ao processar o formulário:', err);
+      devError('Erro ao processar o formulário:', err);
       setFormError(err.message || 'Ocorreu um erro ao processar o formulário');
     }
   };

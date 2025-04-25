@@ -1,3 +1,4 @@
+import { devLog, devWarn, devError } from '@/lib/logger';
 // Script para criar notificações para registros de horas pendentes
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
@@ -11,7 +12,7 @@ async function main() {
   });
 
   if (admins.length === 0) {
-    console.log('Nenhum administrador encontrado no sistema.');
+    devLog('Nenhum administrador encontrado no sistema.');
     return;
   }
 
@@ -32,17 +33,17 @@ async function main() {
   });
 
   if (pendingEntries.length === 0) {
-    console.log('Nenhum registro de horas pendente encontrado.');
+    devLog('Nenhum registro de horas pendente encontrado.');
     return;
   }
 
-  console.log(`Encontrados ${pendingEntries.length} registros pendentes e ${admins.length} administradores.`);
-  console.log('Criando notificações...');
+  devLog(`Encontrados ${pendingEntries.length} registros pendentes e ${admins.length} administradores.`);
+  devLog('Criando notificações...');
 
   // Para cada administrador, criar notificações sobre registros pendentes
   // que pertencem à empresa do administrador (ou todos, se o administrador não estiver associado a uma empresa)
   for (const admin of admins) {
-    console.log(`Processando administrador: ${admin.name}`);
+    devLog(`Processando administrador: ${admin.name}`);
     
     // Filtrar registros da mesma empresa do administrador (ou todos se o admin não tiver empresa)
     const relevantEntries = admin.companyId 
@@ -60,7 +61,7 @@ async function main() {
       });
 
       if (existingNotification) {
-        console.log(`  Notificação já existe para o registro ${entry.id} do funcionário ${entry.user.name}`);
+        devLog(`  Notificação já existe para o registro ${entry.id} do funcionário ${entry.user.name}`);
         continue;
       }
 
@@ -79,16 +80,16 @@ async function main() {
         }
       });
 
-      console.log(`  Notificação criada para o registro ${entry.id} do funcionário ${entry.user.name}`);
+      devLog(`  Notificação criada para o registro ${entry.id} do funcionário ${entry.user.name}`);
     }
   }
 
-  console.log('Processo concluído!');
+  devLog('Processo concluído!');
 }
 
 main()
   .catch(e => {
-    console.error('Erro ao criar notificações:', e);
+    devError('Erro ao criar notificações:', e);
     process.exit(1);
   })
   .finally(async () => {

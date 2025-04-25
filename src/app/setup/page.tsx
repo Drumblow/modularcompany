@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Toast } from '@/components/ui/Toast';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 export default function SetupPage() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function SetupPage() {
         router.push('/login');
       }, 2000);
     } catch (err: any) {
-      console.error('Erro na configuração:', err);
+      devError('Erro na configuração:', err);
       setError(err.message || 'Ocorreu um erro durante a configuração');
     } finally {
       setLoading(false);

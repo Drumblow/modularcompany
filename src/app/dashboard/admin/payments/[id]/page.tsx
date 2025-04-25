@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { devLog, devWarn, devError } from '@/lib/logger';
 
 interface TimeEntry {
   id: string;
@@ -59,7 +60,7 @@ export default function PaymentDetailsPage({ params }: { params: { id: string } 
         const data = await response.json();
         setPayment(data);
       } catch (err: any) {
-        console.error('Erro ao buscar pagamento:', err);
+        devError('Erro ao buscar pagamento:', err);
         setError(err.message || 'Erro ao carregar pagamento');
       } finally {
         setLoading(false);
@@ -90,7 +91,7 @@ export default function PaymentDetailsPage({ params }: { params: { id: string } 
 
       router.push('/dashboard/admin/payments');
     } catch (err: any) {
-      console.error('Erro ao excluir pagamento:', err);
+      devError('Erro ao excluir pagamento:', err);
       setError(err.message || 'Erro ao excluir pagamento');
       setLoading(false);
     }

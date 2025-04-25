@@ -9,6 +9,16 @@ export const prisma =
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   });
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+// Gerencia conexões em ambientes serverless (como a Vercel)
+// para evitar atingir o limite de conexões do PostgreSQL
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+} else {
+  // Em produção, vamos registrar um handler para o evento 'beforeExit'
+  // para fechar conexões abertas antes do processo terminar
+  process.on('beforeExit', () => {
+    prisma.$disconnect();
+  });
+}
 
 export default prisma; 
