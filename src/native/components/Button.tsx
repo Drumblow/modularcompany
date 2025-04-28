@@ -34,9 +34,8 @@ export const Button: React.FC<ButtonProps> = ({
   return null; // Na implementação real, retornará um TouchableOpacity com estilos adequados
 };
 
-/**
- * Os estilos a seguir são uma referência para a implementação futura.
- * 
+/* Os estilos a seguir são uma referência para a implementação futura.
+
 const styles = StyleSheet.create({
   button: {
     borderRadius: 6,
@@ -51,4 +50,5 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
-}); 
+});
+*/ 

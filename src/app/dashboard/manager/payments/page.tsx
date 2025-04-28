@@ -411,7 +411,7 @@ export default function ManagerPaymentsPage() {
               <TableBody>
                 {filteredPayments.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center">
+                    <TableCell className="h-24 text-center">
                       Nenhum pagamento encontrado.
                     </TableCell>
                   </TableRow>
@@ -446,9 +446,9 @@ export default function ManagerPaymentsPage() {
               </TableBody>
               <TableFooter>
                 <TableRow>
-                  <TableCell colSpan={1}>Total</TableCell>
-                  <TableCell colSpan={5}>{formatCurrency(totalAmount)}</TableCell>
-                  <TableCell colSpan={2}>{totalHours.toFixed(1)}h</TableCell>
+                  <TableCell className="font-medium">Total</TableCell>
+                  <TableCell className="font-medium text-right">{formatCurrency(totalAmount)}</TableCell>
+                  <TableCell className="font-medium text-right">{totalHours.toFixed(1)}h</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>
