@@ -280,7 +280,7 @@ export default function EmployeePaymentDetailsPage({ params }: { params: { id: s
               </TableBody>
               <TableFooter>
                 <TableRow>
-                  <TableCell colSpan={1} className="font-medium">Total</TableCell>
+                  <TableCell className="font-medium">Total</TableCell>
                   <TableCell className="font-medium">{payment.totalHours.toFixed(2)}h</TableCell>
                   <TableCell className="text-right font-medium">{formatCurrency(payment.amount)}</TableCell>
                 </TableRow>
