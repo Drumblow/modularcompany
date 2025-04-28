@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { getNavItemsByRole } from '@/lib/navigation';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { PageTransition } from '@/components/ui/PageTransition';
 import { UserRoleType } from '@/lib/utils';
 
 export default function Layout({
@@ -25,7 +26,9 @@ export default function Layout({
   
   return (
     <DashboardLayout sidebarNavItems={navItems}>
-      {children}
+      <PageTransition>
+        {children}
+      </PageTransition>
     </DashboardLayout>
   );
 } 

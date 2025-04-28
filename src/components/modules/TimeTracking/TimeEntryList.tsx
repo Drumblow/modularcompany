@@ -12,6 +12,7 @@ import { useSession } from 'next-auth/react';
 import { Alert } from '@/components/ui/Alert';
 import { toast } from '@/components/ui/Toast';
 import { devLog, devWarn, devError } from '@/lib/logger';
+import { MobileTableCard } from '@/components/ui/Table';
 
 interface TimeEntryListProps {
   userId?: string;
@@ -238,63 +239,92 @@ export const TimeEntryList: React.FC<TimeEntryListProps> = ({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {filteredEntries.map((entry) => (
-              <div
-                key={entry.id}
-                className="rounded-lg border p-4 hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">
-                      <LocalDate date={`${entry.date}T00:00:00`} formatString="PPP" />
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      <LocalTime time={entry.startTime} /> - <LocalTime time={entry.endTime} /> ({entry.totalHours.toFixed(2)} horas)
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{entry.userName}</p>
-                    <div className="mt-2 flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleEdit(entry)}
-                      >
-                        Editar
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        onClick={() => confirmDelete(entry.id)}
-                      >
-                        Excluir
-                      </Button>
+            {/* Versão para dispositivos móveis */}
+            <div className="block md:hidden">
+              {filteredEntries.map((entry) => (
+                <MobileTableCard
+                  key={entry.id}
+                  headers={[
+                    "Data",
+                    "Horário",
+                    "Total",
+                    entry.observation ? "Observação" : null,
+                  ].filter(Boolean)}
+                  rowData={[
+                    <LocalDate key="date" date={`${entry.date}T00:00:00`} formatString="PPP" />,
+                    <span key="time">
+                      <LocalTime time={entry.startTime} /> - <LocalTime time={entry.endTime} />
+                    </span>,
+                    <span key="hours">{entry.totalHours.toFixed(2)} horas</span>,
+                    entry.observation ? entry.observation : null,
+                  ].filter(Boolean)}
+                  className="mb-4"
+                />
+              ))}
+            </div>
+            
+            {/* Versão para desktop */}
+            <div className="hidden md:block">
+              {filteredEntries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="rounded-lg border p-4 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium">
+                        <LocalDate date={`${entry.date}T00:00:00`} formatString="PPP" />
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        <LocalTime time={entry.startTime} /> - <LocalTime time={entry.endTime} /> ({entry.totalHours.toFixed(2)} horas)
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{entry.userName}</p>
+                      <div className="mt-2 flex space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEdit(entry)}
+                          disabled={entry.approved === true}
+                        >
+                          Editar
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => confirmDelete(entry.id)}
+                          disabled={entry.approved === true}
+                        >
+                          Excluir
+                        </Button>
+                      </div>
                     </div>
                   </div>
+                  {entry.observation && (
+                    <div className="mt-2 text-sm">
+                      <p className="font-medium">Observação:</p>
+                      <p className="text-muted-foreground">{entry.observation}</p>
+                    </div>
+                  )}
                 </div>
-                {entry.observation && (
-                  <div className="mt-2 text-sm">
-                    <p className="font-medium">Observação:</p>
-                    <p className="text-muted-foreground">{entry.observation}</p>
-                  </div>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Modal de confirmação de exclusão */}
       {deleteDialogOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
             <h3 className="text-lg font-medium mb-4">Confirmar exclusão</h3>
             <p className="mb-6 text-muted-foreground">
               Tem certeza que deseja excluir este registro de horas? Esta ação não pode ser desfeita.
             </p>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={cancelDelete}>Cancelar</Button>
-              <Button variant="destructive" onClick={() => entryToDelete && handleDelete(entryToDelete)}>
+            <div className="flex flex-col sm:flex-row sm:justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+              <Button variant="outline" onClick={cancelDelete} className="w-full sm:w-auto">Cancelar</Button>
+              <Button variant="destructive" onClick={() => entryToDelete && handleDelete(entryToDelete)} className="w-full sm:w-auto">
                 Excluir
               </Button>
             </div>

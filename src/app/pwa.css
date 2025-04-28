@@ -1,0 +1,264 @@
+/* Estilos específicos para PWA e dispositivos móveis */
+
+/* Desabilitar comportamentos de navegador que afetam a experiência de aplicativo */
+@media (display-mode: standalone) {
+  /* Evitar seleção de texto para uma experiência mais nativa */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+  
+  /* Evitar zoom em inputs em iOS */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  textarea {
+    font-size: 16px;
+  }
+  
+  /* Estilos para a barra de status do iOS */
+  :root {
+    --safe-area-inset-top: env(safe-area-inset-top);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Ajustar para a área segura do iPhone */
+  .bottom-nav-bar {
+    padding-bottom: var(--safe-area-inset-bottom, 0);
+  }
+  
+  /* Melhorar a sensação de toque para botões */
+  button, 
+  a, 
+  [role="button"] {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+}
+
+/* Estilos para animações de toque para melhorar feedback visual */
+@media (max-width: 767px) {
+  .touch-feedback {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .touch-feedback::after {
+    content: '';
+    display: block;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle, rgba(0, 0, 0, 0.1) 10%, transparent 10.01%);
+    background-repeat: no-repeat;
+    background-position: 50%;
+    transform: scale(10, 10);
+    opacity: 0;
+    transition: transform 0.3s, opacity 0.5s;
+  }
+  
+  .touch-feedback:active::after {
+    transform: scale(0, 0);
+    opacity: 0.3;
+    transition: 0s;
+  }
+}
+
+/* Estilizar barras de rolagem para sensação mais nativa */
+@media (max-width: 767px) {
+  ::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+  }
+  
+  * {
+    scrollbar-width: none;
+  }
+}
+
+/* Estilos específicos para PWA */
+
+/* Áreas seguras para dispositivos com notch */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+}
+
+.pt-safe-area-top {
+  padding-top: var(--safe-area-top);
+}
+
+.pr-safe-area-right {
+  padding-right: var(--safe-area-right);
+}
+
+.pb-safe-area-bottom {
+  padding-bottom: var(--safe-area-bottom);
+}
+
+.pl-safe-area-left {
+  padding-left: var(--safe-area-left);
+}
+
+.px-safe-area-x {
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+}
+
+.py-safe-area-y {
+  padding-top: var(--safe-area-top);
+  padding-bottom: var(--safe-area-bottom);
+}
+
+/* Remove highlight ao tocar em elementos no iOS */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Feedback visual ao tocar (efeito similar a aplicativos nativos) */
+.touch-feedback {
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.touch-feedback:active {
+  transform: scale(0.95);
+  opacity: 0.8;
+}
+
+/* Animação sutil para indicar item ativo */
+@keyframes slight-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-slight-bounce {
+  animation: slight-bounce 0.5s ease;
+}
+
+/* Estilo para ocultar a barra de rolagem, mantendo a funcionalidade */
+.hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Ajustes para uma experiência mais app-like em dispositivos móveis */
+@media (max-width: 768px) {
+  body {
+    overflow-x: hidden;
+    overscroll-behavior-y: none; /* Previne o efeito de bounce/rubber band no iOS */
+    -webkit-overflow-scrolling: touch; /* Rolagem suave no iOS */
+  }
+  
+  /* Ajuste para o conteúdo principal com barra inferior */
+  .has-bottom-nav {
+    padding-bottom: calc(4rem + var(--safe-area-bottom));
+  }
+}
+
+/* Efeito de transição de página para simular experiência de app nativo */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.page-transition-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Estilos para barra de navegação inferior mobile */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  background-color: var(--background);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 50;
+  padding-bottom: var(--safe-area-bottom);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 100%;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+
+.bottom-nav-item.active {
+  color: var(--primary);
+}
+
+.bottom-nav-icon {
+  font-size: 1.25rem;
+  margin-bottom: 4px;
+}
+
+.bottom-nav-label {
+  font-size: 0.65rem;
+  font-weight: 500;
+}
+
+/* Animação para item ativo na navegação inferior */
+@keyframes nav-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.bottom-nav-item.active .bottom-nav-icon {
+  animation: nav-bounce 0.4s ease;
+}
+
+/* Ajuste para o conteúdo principal para evitar que seja coberto pela barra de navegação */
+.has-bottom-nav {
+  padding-bottom: calc(60px + var(--safe-area-bottom));
+}
+
+/* Responsividade - mostrar apenas em dispositivos móveis */
+@media (min-width: 769px) {
+  .bottom-nav {
+    display: none;
+  }
+  
+  .has-bottom-nav {
+    padding-bottom: 0;
+  }
+} 

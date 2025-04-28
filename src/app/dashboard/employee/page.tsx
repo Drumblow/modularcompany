@@ -79,88 +79,90 @@ export default function EmployeeDashboard() {
   }, [session]);
 
   return (
-    <div className="flex flex-col space-y-6 p-6">
-      <div className="flex flex-col space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard do Funcionário</h2>
-        <p className="text-muted-foreground">
+    <div className="flex flex-col space-y-4 p-3 sm:p-6 sm:space-y-6">
+      <div className="flex flex-col space-y-1 sm:space-y-2">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard do Funcionário</h2>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Gerencie suas horas trabalhadas e visualize seus pagamentos.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Cards de estatísticas - 2 por linha em mobile, 4 por linha em desktop */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">
               Total Recebido
             </CardTitle>
-            <BanknotesIcon className="h-4 w-4 text-muted-foreground" />
+            <BanknotesIcon className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-lg sm:text-2xl font-bold">
               {loading ? '-' : `R$ ${paymentStats.totalReceived.toFixed(2)}`}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">
               Pagamentos confirmados
             </p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">
               Pagamentos Pendentes
             </CardTitle>
-            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+            <CalendarIcon className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-lg sm:text-2xl font-bold">
               {loading ? '-' : paymentStats.pendingPayments}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">
               Aguardando processamento
             </p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">
               Horas Pagas
             </CardTitle>
-            <ClockIcon className="h-4 w-4 text-muted-foreground" />
+            <ClockIcon className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-lg sm:text-2xl font-bold">
               {loading ? '-' : `${paymentStats.totalHoursPaid.toFixed(1)}h`}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">
               Total de horas já pagas
             </p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">
               Último Pagamento
             </CardTitle>
-            <CheckCircleIcon className="h-4 w-4 text-muted-foreground" />
+            <CheckCircleIcon className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-lg sm:text-2xl font-bold">
               {loading ? '-' : paymentStats.lastPaymentDate}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">
               Data do último pagamento
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="flex justify-between items-center">
+      {/* Ações - empilhadas em mobile, lado a lado em desktop */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
         <h3 className="text-xl font-semibold">Seus Registros de Horas</h3>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.push('/dashboard/employee/payments')}>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button variant="outline" size="full" className="sm:size-default" onClick={() => router.push('/dashboard/employee/payments')}>
             Ver Pagamentos
           </Button>
-          <Button onClick={() => router.push('/dashboard/employee/time-entries')}>
+          <Button size="full" className="sm:size-default" onClick={() => router.push('/dashboard/employee/time-entries')}>
             Novo Registro
           </Button>
         </div>
