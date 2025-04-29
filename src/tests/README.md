@@ -1,95 +1,121 @@
 # Testes da API Mobile do ModularCompany
 
-Este diretório contém os scripts de teste para a API Mobile do ModularCompany.
+Este diretório contém testes automatizados para a API Mobile do ModularCompany.
 
-## Arquivos Disponíveis
+## Arquivos de Teste
 
-1. **mobile-api.test.js** - Script Node.js para testar automaticamente todos os endpoints da API
-2. **mobile-api-postman.json** - Coleção do Postman para testar manualmente os endpoints
+- `mobile-api.test.js` - Testes completos para todas as rotas da API mobile
+- `run-api-tests.js` - Script para iniciar o servidor e executar os testes automaticamente
+- `run-api-tests-simpler.js` - Versão simplificada do script de testes
+- `create-test-user.js` - Script para criar ou atualizar o usuário de teste
+- `mobile-api-postman.json` - Coleção do Postman para testes manuais
 
-## Como Executar os Testes Automatizados
+## Como Executar os Testes
 
-Antes de executar os testes, certifique-se de que:
+Existem três formas de executar os testes da API:
 
-1. O servidor de desenvolvimento está rodando com `npm run dev`
-2. Você tem um usuário de teste válido (modifique as credenciais no arquivo de teste se necessário)
-3. Todas as dependências estão instaladas com `npm install`
+### 1. Com servidor já em execução (recomendado)
 
-Para executar os testes automatizados:
+Se você já tem o servidor rodando (com `npm run dev` em qualquer porta 3000 ou 3001), execute:
 
 ```bash
-node src/tests/mobile-api.test.js
+npm run test:api:simple
 ```
 
-## Como Usar a Coleção Postman
+Este é o método mais simples e confiável. O script vai:
+1. Criar/atualizar o usuário de teste no banco de dados
+2. Detectar automaticamente em qual porta o servidor está rodando (3000 ou 3001)
+3. Executar os testes contra o servidor encontrado
 
-1. Abra o Postman
-2. Importe a coleção `src/tests/mobile-api-postman.json`
-3. Configure a variável de ambiente `baseUrl` para o endereço do seu servidor (padrão: `http://localhost:3000/api`)
-4. Execute a requisição "Login" para obter o token de autenticação
-5. O token será automaticamente armazenado na variável `token` e usado nas requisições subsequentes
-6. Execute as demais requisições na ordem desejada
+### 2. Teste direto (avançado)
 
-## Notas sobre os Testes
+Se você sabe exatamente em qual porta seu servidor está rodando:
 
-- Os testes estão configurados para executar no ambiente de desenvolvimento local
-- Para testar em outros ambientes, altere a variável `BASE_URL` no arquivo `mobile-api.test.js` ou a variável `baseUrl` na coleção Postman
-- Alguns testes podem falhar se não houver dados existentes no banco de dados (por exemplo, pagamentos ou notificações)
-- Os testes são independentes e falhas em um teste não impedem a execução dos demais
+```bash
+npm run test:api
+```
 
-## Resolução de Problemas
+**Nota**: Por padrão, este comando tenta se conectar à porta 3000. Para especificar uma porta diferente, use:
 
-Se os testes falharem com erros de Prisma ou falha de conexão com o banco de dados:
+```bash
+TEST_API_BASE_URL=http://localhost:3001/api npm run test:api
+```
 
-1. Regenere o cliente Prisma:
-   ```bash
-   npx prisma generate
-   ```
+### 3. Iniciando o servidor automaticamente
 
-2. Reinicie o servidor de desenvolvimento:
-   ```bash
-   npm run dev
-   ```
+Se você não tem um servidor rodando, execute:
 
-3. Verifique se as credenciais de teste são válidas no seu ambiente
+```bash
+npm run test:api:with-server
+```
+
+Este comando vai:
+1. Verificar se um servidor já está rodando em alguma porta disponível (3000 ou 3001)
+2. Se não estiver, iniciar um servidor de desenvolvimento na primeira porta disponível
+3. Criar/atualizar o usuário de teste no banco de dados
+4. Executar os testes contra o servidor encontrado ou iniciado
+5. Encerrar o servidor (apenas se ele foi iniciado pelo script)
+
+## Criando o Usuário de Teste Manualmente
+
+Se você precisar apenas criar ou atualizar o usuário de teste, execute:
+
+```bash
+npm run test:create-user
+```
+
+## Configurações de Teste
+
+Os testes usam as seguintes configurações:
+
+- **URL Base**: Detectada automaticamente - `http://localhost:3000/api` ou `http://localhost:3001/api`
+- **Credenciais de Teste**: `funcionario@teste.com` / `senha123`
+- **Número de Tentativas**: 3 tentativas para cada requisição
+- **Tempo de Espera**: 2 segundos entre tentativas
+
+## Solução de Problemas
+
+### Erro de Conexão Recusada (ECONNREFUSED)
+
+Se você receber um erro `ECONNREFUSED`, isso significa que o servidor não está rodando ou não está acessível. Certifique-se de:
+
+1. Que o servidor esteja rodando em uma das portas suportadas (3000 ou 3001)
+2. Que não haja firewall bloqueando a conexão
+3. Que você não esteja usando VPN que possa interferir com conexões locais
+
+### Falha de Autenticação
+
+Se a autenticação falhar, verifique:
+
+1. Se as credenciais de teste estão corretas
+2. Se o banco de dados tem um usuário com essas credenciais
+3. Execute `npm run test:create-user` para garantir que o usuário de teste existe
+
+### Timeout nas Requisições
+
+Se as requisições estiverem demorando muito e atingindo timeout:
+
+1. Aumente o valor de timeout no arquivo `mobile-api.test.js` (padrão: 10000ms)
+2. Verifique se o servidor não está sobrecarregado
 
 ## Endpoints Testados
 
-1. **Autenticação**
-   - Login (`POST /mobile-auth`)
-   - Alterar senha (`POST /mobile-auth/change-password`)
-   - Recuperar senha (`POST /mobile-auth/forgot-password`)
+O script de teste verifica os seguintes endpoints:
 
-2. **Perfil**
-   - Buscar perfil (`GET /mobile-profile`)
-   - Atualizar perfil (`PUT /mobile-profile`)
-
-3. **Registros de Horas**
-   - Listar registros (`GET /mobile-time-entries`)
-   - Criar registro (`POST /mobile-time-entries`)
-   - Visualizar registro (`GET /mobile-time-entries/:id/view`)
-   - Editar registro (`PUT /mobile-time-entries/:id`)
-   - Excluir registro (`DELETE /mobile-time-entries/:id`)
-
-4. **Pagamentos**
-   - Listar pagamentos (`GET /mobile-payments`)
-   - Visualizar pagamento (`GET /mobile-payments/:id`)
-   - Verificar saldo (`GET /mobile-users/balance`)
-
-5. **Dashboard**
-   - Obter dados do dashboard (`GET /mobile-dashboard`)
-
-6. **Projetos**
-   - Listar projetos (`GET /mobile-projects`)
-
-7. **Notificações**
-   - Listar notificações (`GET /mobile-notifications`)
-   - Marcar como lida (`PUT /mobile-notifications`)
-   - Excluir notificação (`DELETE /mobile-notifications`)
-
-8. **Feedback**
-   - Enviar feedback (`POST /mobile-feedback`)
-   - Listar feedbacks (`GET /mobile-feedback`)
-
-9. **Relatórios**
-   - Exportar relatório (`POST /mobile-reports/export`) 
+1. Autenticação (`POST /mobile-auth`)
+2. Perfil do usuário (`GET /mobile-profile`)
+3. Listagem de registros de horas (`GET /mobile-time-entries`)
+4. Criação de registro de horas (`POST /mobile-time-entries`)
+5. Visualização de registro de horas (`GET /mobile-time-entries/:id/view`)
+6. Edição de registro de horas (`PUT /mobile-time-entries/:id`)
+7. Exclusão de registro de horas (`DELETE /mobile-time-entries/:id`)
+8. Listagem de pagamentos (`GET /mobile-payments`)
+9. Visualização de pagamento (`GET /mobile-payments/:id`)
+10. Saldo do usuário (`GET /mobile-users/balance`)
+11. Dashboard (`GET /mobile-dashboard`)
+12. Projetos (`GET /mobile-projects`)
+13. Notificações (`GET /mobile-notifications`)
+14. Marcação de notificação como lida (`PUT /mobile-notifications`)
+15. Envio de feedback (`POST /mobile-feedback`)
+16. Listagem de feedbacks (`GET /mobile-feedback`)
+17. Exportação de relatório (`POST /mobile-reports/export`) 

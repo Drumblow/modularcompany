@@ -2,14 +2,21 @@
 const axios = require('axios');
 const { format } = require('date-fns');
 
-// Configuração da base URL para testes
-const BASE_URL = 'http://localhost:3000/api';
+// Configuração da base URL para testes (a partir de variável de ambiente ou padrão)
+const BASE_URL = process.env.TEST_API_BASE_URL || 'http://localhost:3000/api';
+
+console.log(`🔌 Conectando em: ${BASE_URL}`);
 
 // Credenciais para teste (altere para credenciais válidas do seu ambiente)
 const TEST_USER = {
   email: 'funcionario@teste.com',
   password: 'senha123'
 };
+
+// Número máximo de tentativas para cada requisição
+const MAX_RETRIES = 3;
+// Tempo de espera entre tentativas (em ms)
+const RETRY_DELAY = 2000;
 
 // Armazenar o token e dados do usuário para os testes
 let authToken = '';
@@ -24,7 +31,9 @@ const api = axios.create({
   baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  // Aumentar o timeout para 10 segundos
+  timeout: 10000
 });
 
 // Adicionar interceptor para incluir o token em todas as requisições
@@ -38,51 +47,72 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Função utilitária para fazer a validação em cada teste
+// Função para esperar um tempo determinado
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Função utilitária para fazer a validação em cada teste com retries
 const testEndpoint = async (method, endpoint, data = null, params = null, validateFn = null) => {
-  try {
-    console.log(`\n🧪 Testando ${method.toUpperCase()} ${endpoint}`);
-    
-    const config = {};
-    if (params) config.params = params;
-    
-    let response;
-    
-    switch (method.toLowerCase()) {
-      case 'get':
-        response = await api.get(endpoint, config);
-        break;
-      case 'post':
-        response = await api.post(endpoint, data, config);
-        break;
-      case 'put':
-        response = await api.put(endpoint, data, config);
-        break;
-      case 'delete':
-        response = await api.delete(endpoint, config);
-        break;
-      default:
-        throw new Error(`Método HTTP não suportado: ${method}`);
+  let attempts = 0;
+  let lastError = null;
+
+  while (attempts < MAX_RETRIES) {
+    try {
+      attempts++;
+      console.log(`\n🧪 Testando ${method.toUpperCase()} ${endpoint} (tentativa ${attempts}/${MAX_RETRIES})`);
+      
+      const config = {};
+      if (params) config.params = params;
+      
+      let response;
+      
+      switch (method.toLowerCase()) {
+        case 'get':
+          response = await api.get(endpoint, config);
+          break;
+        case 'post':
+          response = await api.post(endpoint, data, config);
+          break;
+        case 'put':
+          response = await api.put(endpoint, data, config);
+          break;
+        case 'delete':
+          response = await api.delete(endpoint, config);
+          break;
+        default:
+          throw new Error(`Método HTTP não suportado: ${method}`);
+      }
+      
+      console.log(`✅ Status: ${response.status}`);
+      
+      // Se houver uma função de validação, executá-la
+      if (validateFn && typeof validateFn === 'function') {
+        validateFn(response.data);
+      } else {
+        console.log('📄 Resposta:', JSON.stringify(response.data, null, 2).substring(0, 300) + (JSON.stringify(response.data, null, 2).length > 300 ? '...' : ''));
+      }
+      
+      return response.data;
+    } catch (error) {
+      lastError = error;
+      console.log(`❌ Erro (tentativa ${attempts}/${MAX_RETRIES}): ${error.message}`);
+      
+      if (error.response) {
+        console.log(`Status: ${error.response.status}`);
+        console.log('Dados:', error.response.data);
+      } else if (error.code === 'ECONNREFUSED') {
+        console.log('O servidor não está respondendo. Verifique se ele está rodando na porta 3000.');
+      }
+      
+      // Se não for a última tentativa, esperar antes de tentar novamente
+      if (attempts < MAX_RETRIES) {
+        console.log(`⏳ Aguardando ${RETRY_DELAY / 1000} segundos antes de tentar novamente...`);
+        await sleep(RETRY_DELAY);
+      }
     }
-    
-    console.log(`✅ Status: ${response.status}`);
-    
-    // Se houver uma função de validação, executá-la
-    if (validateFn && typeof validateFn === 'function') {
-      validateFn(response.data);
-    } else {
-      console.log('📄 Resposta:', JSON.stringify(response.data, null, 2).substring(0, 300) + (JSON.stringify(response.data, null, 2).length > 300 ? '...' : ''));
-    }
-    
-    return response.data;
-  } catch (error) {
-    console.log(`❌ Erro: ${error.message}`);
-    if (error.response) {
-      console.log(`Status: ${error.response.status}`);
-      console.log('Dados:', error.response.data);
-    }
-    throw error;
   }
+  
+  // Se chegarmos aqui, é porque todas as tentativas falharam
+  throw lastError || new Error(`Falha após ${MAX_RETRIES} tentativas`);
 };
 
 // Função principal de teste
@@ -220,13 +250,27 @@ const runTests = async () => {
     await testEndpoint('post', '/mobile-reports/export', reportRequest);
     
     console.log('\n✅ Testes concluídos com sucesso');
+    return true;
   } catch (error) {
     console.log('\n❌ Os testes falharam');
     console.error(error);
+    return false;
   }
 };
 
-// Executar os testes
-runTests();
+// Se este arquivo for executado diretamente, rodar os testes
+if (require.main === module) {
+  runTests()
+    .then(success => {
+      process.exit(success ? 0 : 1);
+    })
+    .catch(err => {
+      console.error('Erro não tratado:', err);
+      process.exit(1);
+    });
+}
+
+// Exportar a função para que possa ser usada por outros scripts
+module.exports = { runTests };
 
 // Para executar este script: node src/tests/mobile-api.test.js 

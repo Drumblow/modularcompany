@@ -130,4 +130,78 @@ Durante o desenvolvimento, você pode usar os seguintes usuários de teste:
 
 ## 📝 Licença
 
-Este projeto está licenciado sob a licença MIT - veja o arquivo LICENSE para mais detalhes. 
+Este projeto está licenciado sob a licença MIT - veja o arquivo LICENSE para mais detalhes.
+
+## Executando o Projeto
+
+1. Clone o repositório
+2. Instale as dependências:
+   ```bash
+   npm install
+   ```
+3. Configure as variáveis de ambiente:
+   - Copie o arquivo `.env.example` para `.env`
+   - Preencha as variáveis necessárias
+   
+4. Execute as migrações do banco de dados:
+   ```bash
+   npx prisma migrate dev
+   ```
+   
+5. Inicie o servidor de desenvolvimento:
+   ```bash
+   npm run dev
+   ```
+   
+6. Acesse o projeto em `http://localhost:3000`
+
+## Scripts Disponíveis
+
+- `npm run dev` - Inicia o servidor de desenvolvimento
+- `npm run build` - Compila o projeto para produção
+- `npm run start` - Inicia o servidor de produção
+- `npm run lint` - Executa o linter
+- `npm run prisma:studio` - Abre o Prisma Studio para visualizar o banco de dados
+- `npm run prisma:generate` - Gera o Prisma Client
+- `npm run prisma:migrate` - Executa as migrações do banco de dados
+- `npm run db:push` - Atualiza o banco de dados sem criar migrações
+
+## Testes da API Mobile
+
+Este projeto inclui testes automatizados para a API mobile.
+
+### Executando os Testes
+
+1. Certifique-se de que o servidor está rodando:
+   ```bash
+   npm run dev
+   ```
+
+2. Em outro terminal, execute os testes:
+   ```bash
+   npm run test:api:simple
+   ```
+
+O script de teste detectará automaticamente a porta em que o servidor está rodando (3000 ou 3001) e executará os testes corretamente.
+
+### Outros Scripts de Teste
+
+- `npm run test:api` - Executa os testes contra o servidor rodando
+- `npm run test:create-user` - Cria/atualiza o usuário de teste
+- `npm run test:api:with-server` - Inicia o servidor e executa os testes
+
+Para mais detalhes sobre os testes, consulte o [README de testes](src/tests/README.md).
+
+## Estrutura do Projeto
+
+- `src/app` - Código da aplicação Next.js
+  - `api` - Endpoints da API
+  - `dashboard` - Páginas do dashboard
+- `src/components` - Componentes React
+- `src/lib` - Bibliotecas e utilitários
+- `prisma` - Configuração do Prisma ORM
+- `public` - Arquivos estáticos
+
+## API Mobile
+
+A API Mobile está documentada em [API_MOBILE.md](src/docs/API_MOBILE.md). 
