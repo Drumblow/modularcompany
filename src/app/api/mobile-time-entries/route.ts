@@ -14,8 +14,24 @@ export async function GET(req: NextRequest) {
 
   // Obter parâmetros de consulta
   const { searchParams } = new URL(req.url);
+  
+  // Parâmetros de data
   let startDateParam = searchParams.get('startDate');
   let endDateParam = searchParams.get('endDate');
+  
+  // Parâmetros de filtro avançado
+  const approvedParam = searchParams.get('approved');
+  const rejectedParam = searchParams.get('rejected');
+  const projectParam = searchParams.get('project');
+  const minHoursParam = searchParams.get('minHours');
+  const maxHoursParam = searchParams.get('maxHours');
+  const unpaidParam = searchParams.get('unpaid');
+  
+  // Parâmetros de paginação e ordenação
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '50');
+  const sortBy = searchParams.get('sortBy') || 'date'; // Opções: date, hours, createdAt
+  const sortOrder = searchParams.get('sortOrder') || 'desc'; // Opções: asc, desc
   
   // Se não fornecidos, usar o mês atual
   const today = new Date();
@@ -26,27 +42,137 @@ export async function GET(req: NextRequest) {
   let startDate = startDateParam ? parseISO(startDateParam) : defaultStartDate;
   let endDate = endDateParam ? parseISO(endDateParam) : defaultEndDate;
   
+  // Calcular offset para paginação
+  const skip = (page - 1) * limit;
+  
   try {
-    // Buscar registros de horas do usuário
-    const timeEntries = await prisma.timeEntry.findMany({
-      where: {
-        userId: auth.id,
-        date: {
-          gte: startDate,
-          lte: endDate
-        }
-      },
-      orderBy: {
-        date: 'desc'
+    // Construir filtro base
+    const where: any = {
+      userId: auth.id,
+      date: {
+        gte: startDate,
+        lte: endDate
       }
+    };
+    
+    // Adicionar filtros avançados se fornecidos
+    if (approvedParam !== null) {
+      where.approved = approvedParam === 'true';
+    }
+    
+    if (rejectedParam !== null) {
+      where.rejected = rejectedParam === 'true';
+    }
+    
+    if (projectParam) {
+      where.project = {
+        contains: projectParam,
+        mode: 'insensitive'
+      };
+    }
+    
+    if (minHoursParam) {
+      where.totalHours = {
+        ...(where.totalHours || {}),
+        gte: parseFloat(minHoursParam)
+      };
+    }
+    
+    if (maxHoursParam) {
+      where.totalHours = {
+        ...(where.totalHours || {}),
+        lte: parseFloat(maxHoursParam)
+      };
+    }
+    
+    // Processar filtro de registros não pagos
+    let excludeTimeEntryIds: string[] = [];
+    if (unpaidParam === 'true') {
+      // Buscar IDs de registros associados a pagamentos
+      const paymentTimeEntries = await prisma.paymentTimeEntry.findMany({
+        where: {
+          timeEntry: {
+            userId: auth.id
+          }
+        },
+        select: {
+          timeEntryId: true
+        }
+      });
+      
+      excludeTimeEntryIds = paymentTimeEntries.map(pte => pte.timeEntryId);
+      
+      if (excludeTimeEntryIds.length > 0) {
+        where.id = {
+          notIn: excludeTimeEntryIds
+        };
+      }
+    }
+    
+    // Definir ordenação
+    const orderBy: any = {};
+    orderBy[sortBy === 'hours' ? 'totalHours' : sortBy] = sortOrder;
+    
+    // Contar total para paginação
+    const total = await prisma.timeEntry.count({
+      where
     });
+    
+    // Buscar registros de horas com paginação
+    const timeEntries = await prisma.timeEntry.findMany({
+      where,
+      orderBy,
+      skip,
+      take: limit
+    });
+    
+    // Buscar contagens por status para mostrar no frontend
+    const [approved, pending, rejected] = await Promise.all([
+      prisma.timeEntry.count({
+        where: {
+          userId: auth.id,
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          approved: true
+        }
+      }),
+      prisma.timeEntry.count({
+        where: {
+          userId: auth.id,
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          approved: null,
+          rejected: null
+        }
+      }),
+      prisma.timeEntry.count({
+        where: {
+          userId: auth.id,
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          rejected: true
+        }
+      })
+    ]);
     
     // Transformar as datas em strings para evitar problemas de serialização
     const formattedEntries = timeEntries.map(entry => ({
-      ...entry,
+      id: entry.id,
       date: format(entry.date, 'yyyy-MM-dd'),
       startTime: format(entry.startTime, 'yyyy-MM-dd\'T\'HH:mm:ss'),
       endTime: format(entry.endTime, 'yyyy-MM-dd\'T\'HH:mm:ss'),
+      totalHours: entry.totalHours,
+      observation: entry.observation,
+      project: entry.project,
+      approved: entry.approved,
+      rejected: entry.rejected,
+      rejectionReason: entry.rejectionReason,
       createdAt: format(entry.createdAt, 'yyyy-MM-dd\'T\'HH:mm:ss'),
       updatedAt: format(entry.updatedAt, 'yyyy-MM-dd\'T\'HH:mm:ss')
     }));
@@ -55,19 +181,51 @@ export async function GET(req: NextRequest) {
     console.log('Mobile - Registros de horas acessados:', { 
       userId: auth.id,
       count: timeEntries.length,
-      period: `${format(startDate, 'yyyy-MM-dd')} até ${format(endDate, 'yyyy-MM-dd')}`
+      period: `${format(startDate, 'yyyy-MM-dd')} até ${format(endDate, 'yyyy-MM-dd')}`,
+      filters: {
+        approved: approvedParam,
+        rejected: rejectedParam,
+        project: projectParam,
+        minHours: minHoursParam,
+        maxHours: maxHoursParam,
+        unpaid: unpaidParam
+      },
+      pagination: { page, limit }
     });
     
-    // Retornar dados
+    // Retornar dados com informações de paginação e estatísticas
     return createCorsResponse({ 
       timeEntries: formattedEntries,
       period: {
         startDate: format(startDate, 'yyyy-MM-dd'),
         endDate: format(endDate, 'yyyy-MM-dd')
+      },
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      },
+      stats: {
+        approved,
+        pending,
+        rejected,
+        total: approved + pending + rejected
+      },
+      appliedFilters: {
+        approved: approvedParam,
+        rejected: rejectedParam,
+        project: projectParam,
+        minHours: minHoursParam,
+        maxHours: maxHoursParam,
+        unpaid: unpaidParam,
+        sortBy,
+        sortOrder
       }
     });
     
   } catch (error) {
+    console.error('Erro ao buscar registros de horas:', error);
     return createCorsResponse({ error: 'Erro ao buscar registros de horas' }, 500);
   }
 }
@@ -181,6 +339,7 @@ export async function POST(req: NextRequest) {
     }, 201);
     
   } catch (error) {
+    console.error('Erro ao criar registro de horas:', error);
     return createCorsResponse({ error: 'Erro ao criar registro de horas' }, 500);
   }
 }

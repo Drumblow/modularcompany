@@ -1,5 +1,7 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+  previewFeatures = []
 }
 
 datasource db {
@@ -129,4 +131,36 @@ model PaymentTimeEntry {
   timeEntry   TimeEntry @relation(fields: [timeEntryId], references: [id])
   
   @@unique([paymentId, timeEntryId])  // Um registro não pode ser incluído duas vezes no mesmo pagamento
+}
+
+// Modelo para armazenar feedbacks dos usuários
+model Feedback {
+  id          String    @id @default(uuid())
+  type        String    // 'bug', 'feature', 'suggestion', 'other'
+  title       String
+  description String
+  priority    String    @default("medium") // 'low', 'medium', 'high'
+  metadata    Json?     @default("{}")
+  status      String    @default("pending") // 'pending', 'in_progress', 'resolved', 'closed'
+  
+  // Informações do usuário que enviou o feedback
+  userId      String
+  userName    String
+  userEmail   String
+  userRole    String
+  companyId   String?
+  
+  // Informações do dispositivo/origem
+  device      String?
+  source      String    // 'mobile', 'web'
+  
+  // Campos de auditoria
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  resolvedAt  DateTime?
+  
+  // Campos de resposta
+  response    String?
+  respondedAt DateTime?
+  respondedBy String?
 }

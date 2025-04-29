@@ -1,0 +1,917 @@
+{
+	"info": {
+		"_postman_id": "fc94b1b3-e1e3-4c50-91da-5d9c3eea5b47",
+		"name": "ModularCompany Mobile API",
+		"description": "Coleção para testar a API Mobile do ModularCompany",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Autenticação",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"if (jsonData.token) {",
+									"    pm.collectionVariables.set(\"token\", jsonData.token);",
+									"    pm.collectionVariables.set(\"userId\", jsonData.user.id);",
+									"    pm.test(\"Token obtido e armazenado\", function() {",
+									"        pm.expect(jsonData.token).to.be.a('string');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"funcionario@teste.com\",\n    \"password\": \"senha123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mobile-auth",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-auth"
+							]
+						},
+						"description": "Endpoint para fazer login e obter o token de autenticação"
+					},
+					"response": []
+				},
+				{
+					"name": "Alterar Senha",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"currentPassword\": \"senha123\",\n    \"newPassword\": \"nova123\",\n    \"confirmPassword\": \"nova123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mobile-auth/change-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-auth",
+								"change-password"
+							]
+						},
+						"description": "Alterar a senha do usuário logado"
+					},
+					"response": []
+				},
+				{
+					"name": "Recuperar Senha",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"funcionario@teste.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mobile-auth/forgot-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-auth",
+								"forgot-password"
+							]
+						},
+						"description": "Solicitar recuperação de senha"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints relacionados à autenticação e gerenciamento de senha"
+		},
+		{
+			"name": "2. Perfil do Usuário",
+			"item": [
+				{
+					"name": "Buscar Perfil",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-profile"
+							]
+						},
+						"description": "Obter os detalhes do perfil do usuário"
+					},
+					"response": []
+				},
+				{
+					"name": "Atualizar Perfil",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Nome Atualizado\",\n    \"email\": \"funcionario@teste.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mobile-profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-profile"
+							]
+						},
+						"description": "Atualizar o perfil do usuário"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints relacionados ao perfil do usuário"
+		},
+		{
+			"name": "3. Registros de Horas",
+			"item": [
+				{
+					"name": "Listar Registros",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"if (jsonData.timeEntries && jsonData.timeEntries.length > 0) {",
+									"    pm.collectionVariables.set(\"timeEntryId\", jsonData.timeEntries[0].id);",
+									"    pm.test(\"ID do registro de horas armazenado\", function() {",
+									"        pm.expect(jsonData.timeEntries[0].id).to.be.a('string');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-time-entries",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-time-entries"
+							],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2023-05-01",
+									"disabled": true
+								},
+								{
+									"key": "endDate",
+									"value": "2023-05-31",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Listar os registros de horas do usuário"
+					},
+					"response": []
+				},
+				{
+					"name": "Criar Registro",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"if (jsonData.timeEntry) {",
+									"    pm.collectionVariables.set(\"timeEntryId\", jsonData.timeEntry.id);",
+									"    pm.test(\"ID do novo registro de horas armazenado\", function() {",
+									"        pm.expect(jsonData.timeEntry.id).to.be.a('string');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoDate}}\",\n    \"startTime\": \"{{$isoDate}}T09:00:00\",\n    \"endTime\": \"{{$isoDate}}T17:00:00\",\n    \"observation\": \"Registro de teste via Postman\",\n    \"project\": \"Teste Postman\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mobile-time-entries",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-time-entries"
+							]
+						},
+						"description": "Criar um novo registro de horas"
+					},
+					"response": []
+				},
+				{
+					"name": "Visualizar Registro",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-time-entries/{{timeEntryId}}/view",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-time-entries",
+								"{{timeEntryId}}",
+								"view"
+							]
+						},
+						"description": "Visualizar detalhes de um registro de horas específico"
+					},
+					"response": []
+				},
+				{
+					"name": "Editar Registro",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"date\": \"{{$isoDate}}\",\n    \"startTime\": \"{{$isoDate}}T10:00:00\",\n    \"endTime\": \"{{$isoDate}}T18:00:00\",\n    \"observation\": \"Registro atualizado via Postman\",\n    \"project\": \"Teste Postman\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mobile-time-entries/{{timeEntryId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-time-entries",
+								"{{timeEntryId}}"
+							]
+						},
+						"description": "Editar um registro de horas existente"
+					},
+					"response": []
+				},
+				{
+					"name": "Excluir Registro",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-time-entries/{{timeEntryId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-time-entries",
+								"{{timeEntryId}}"
+							]
+						},
+						"description": "Excluir um registro de horas"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints relacionados aos registros de horas"
+		},
+		{
+			"name": "4. Pagamentos",
+			"item": [
+				{
+					"name": "Listar Pagamentos",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"if (jsonData.payments && jsonData.payments.length > 0) {",
+									"    pm.collectionVariables.set(\"paymentId\", jsonData.payments[0].id);",
+									"    pm.test(\"ID do pagamento armazenado\", function() {",
+									"        pm.expect(jsonData.payments[0].id).to.be.a('string');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-payments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-payments"
+							],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2023-05-01",
+									"disabled": true
+								},
+								{
+									"key": "endDate",
+									"value": "2023-05-31",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "completed",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Listar os pagamentos do usuário"
+					},
+					"response": []
+				},
+				{
+					"name": "Visualizar Pagamento",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-payments/{{paymentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-payments",
+								"{{paymentId}}"
+							]
+						},
+						"description": "Visualizar detalhes de um pagamento específico"
+					},
+					"response": []
+				},
+				{
+					"name": "Verificar Saldo",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-users/balance",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-users",
+								"balance"
+							],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2023-05-01",
+									"disabled": true
+								},
+								{
+									"key": "endDate",
+									"value": "2023-05-31",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Verificar o saldo do usuário"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints relacionados aos pagamentos"
+		},
+		{
+			"name": "5. Notificações",
+			"item": [
+				{
+					"name": "Listar Notificações",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"if (jsonData.notifications && jsonData.notifications.length > 0) {",
+									"    pm.collectionVariables.set(\"notificationId\", jsonData.notifications[0].id);",
+									"    pm.test(\"ID da notificação armazenado\", function() {",
+									"        pm.expect(jsonData.notifications[0].id).to.be.a('string');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-notifications",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-notifications"
+							],
+							"query": [
+								{
+									"key": "read",
+									"value": "false",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "50",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Listar as notificações do usuário"
+					},
+					"response": []
+				},
+				{
+					"name": "Marcar Como Lida",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": \"{{notificationId}}\",\n    \"read\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mobile-notifications",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-notifications"
+							]
+						},
+						"description": "Marcar uma notificação como lida"
+					},
+					"response": []
+				},
+				{
+					"name": "Marcar Todas Como Lidas",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"all\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mobile-notifications",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-notifications"
+							]
+						},
+						"description": "Marcar todas as notificações como lidas"
+					},
+					"response": []
+				},
+				{
+					"name": "Excluir Notificação",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-notifications?id={{notificationId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-notifications"
+							],
+							"query": [
+								{
+									"key": "id",
+									"value": "{{notificationId}}"
+								}
+							]
+						},
+						"description": "Excluir uma notificação"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints relacionados às notificações"
+		},
+		{
+			"name": "6. Dashboard",
+			"item": [
+				{
+					"name": "Obter Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-dashboard",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-dashboard"
+							]
+						},
+						"description": "Obter os dados para o dashboard"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints relacionados ao dashboard"
+		},
+		{
+			"name": "7. Projetos",
+			"item": [
+				{
+					"name": "Listar Projetos",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-projects",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-projects"
+							]
+						},
+						"description": "Listar os projetos disponíveis"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints relacionados aos projetos"
+		},
+		{
+			"name": "8. Feedback",
+			"item": [
+				{
+					"name": "Enviar Feedback",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"if (jsonData.feedbackId) {",
+									"    pm.collectionVariables.set(\"feedbackId\", jsonData.feedbackId);",
+									"    pm.test(\"ID do feedback armazenado\", function() {",
+									"        pm.expect(jsonData.feedbackId).to.be.a('string');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"suggestion\",\n    \"title\": \"Sugestão via Postman\",\n    \"description\": \"Este é um feedback enviado a partir dos testes do Postman\",\n    \"priority\": \"medium\",\n    \"metadata\": {\n        \"testFrom\": \"Postman\",\n        \"automated\": true\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mobile-feedback",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-feedback"
+							]
+						},
+						"description": "Enviar um feedback"
+					},
+					"response": []
+				},
+				{
+					"name": "Listar Feedbacks",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-feedback",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-feedback"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Listar os feedbacks do usuário"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints relacionados aos feedbacks"
+		},
+		{
+			"name": "9. Relatórios",
+			"item": [
+				{
+					"name": "Exportar Relatório",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"startDate\": \"2023-05-01\",\n    \"endDate\": \"2023-05-31\",\n    \"includeRejected\": false,\n    \"format\": \"detailed\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mobile-reports/export",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-reports",
+								"export"
+							]
+						},
+						"description": "Exportar um relatório"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints relacionados aos relatórios"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Configurar data ISO para uso nas requisições",
+					"var today = new Date();",
+					"pm.variables.set('$isoDate', today.toISOString().split('T')[0]);"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": ""
+		},
+		{
+			"key": "userId",
+			"value": ""
+		},
+		{
+			"key": "timeEntryId",
+			"value": ""
+		},
+		{
+			"key": "paymentId",
+			"value": ""
+		},
+		{
+			"key": "notificationId",
+			"value": ""
+		},
+		{
+			"key": "feedbackId",
+			"value": ""
+		}
+	]
+} 
