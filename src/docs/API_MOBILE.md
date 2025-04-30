@@ -388,6 +388,52 @@ ou
 }
 ```
 
+#### Aprovar/Rejeitar Registro (Admin/Manager)
+
+**Endpoint:** `/mobile-time-entries/[id]/approve`
+
+**Método:** `PUT`
+
+**Headers:**
+```
+Authorization: Bearer ... (Token de Admin ou Manager)
+```
+
+**Descrição:** Permite que um **Administrador** ou **Gerente** aprove ou rejeite um registro de horas específico de um funcionário da sua empresa.
+
+**Body (para aprovar):**
+```json
+{
+  "approved": true
+}
+```
+
+**Body (para rejeitar):**
+```json
+{
+  "approved": false,
+  "rejectionReason": "Descrição do motivo da rejeição"
+}
+```
+
+**Resposta de Sucesso (200):**
+```json
+{
+  "id": "entry123",
+  "approved": true, // ou false se rejeitado
+  "rejected": false, // ou true se rejeitado
+  "rejectionReason": null, // ou a razão fornecida
+  "message": "Registro aprovado com sucesso" // ou "Registro rejeitado com sucesso"
+}
+```
+
+**Respostas de Erro:**
+- **400 Bad Request:** Dados inválidos (ex: `approved` não é booleano, `rejectionReason` faltando ao rejeitar).
+- **401 Unauthorized:** Token inválido ou expirado.
+- **403 Forbidden:** Usuário não tem permissão (não é Admin/Manager) ou o registro não pertence à sua empresa.
+- **404 Not Found:** Registro de horas com o ID fornecido não encontrado.
+- **500 Internal Server Error:** Erro inesperado no servidor.
+
 #### Excluir Registro
 
 **Endpoint:** `/mobile-time-entries/[id]`
@@ -422,7 +468,7 @@ ou
 
 ### Pagamentos
 
-#### Listar Pagamentos
+#### Listar Pagamentos (Funcionário)
 
 **Endpoint:** `/mobile-payments`
 
@@ -432,6 +478,8 @@ ou
 ```
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
+
+**Descrição:** Retorna os pagamentos recebidos pelo **usuário autenticado** (funcionário).
 
 **Query Parameters (opcionais):**
 - `startDate`: Data inicial no formato ISO (YYYY-MM-DD)
@@ -488,7 +536,7 @@ Se não especificado, retorna pagamentos do mês atual.
 }
 ```
 
-#### Visualizar Pagamento
+#### Visualizar Pagamento (Funcionário)
 
 **Endpoint:** `/mobile-payments/[id]`
 
@@ -498,6 +546,8 @@ Se não especificado, retorna pagamentos do mês atual.
 ```
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
+
+**Descrição:** Retorna os detalhes de um pagamento específico recebido pelo **usuário autenticado**.
 
 **Resposta de Sucesso (200):**
 ```json
@@ -558,6 +608,115 @@ ou
   "error": "Você não tem permissão para visualizar este pagamento"
 }
 ```
+
+#### Confirmar Recebimento (Funcionário)
+
+**Endpoint:** `/mobile-payments/[id]/confirm`
+
+**Método:** `PUT`
+
+**Headers:**
+```
+Authorization: Bearer ... (Token do Funcionário que recebeu o pagamento)
+```
+
+**Descrição:** Permite que o **Funcionário** confirme o recebimento de um pagamento que está com status 'pending' ou 'awaiting_confirmation'. Apenas o destinatário do pagamento pode confirmar.
+
+**Body:** (Não requer corpo)
+
+**Resposta de Sucesso (200):**
+```json
+{
+  "payment": {
+    "id": "payment-uuid-confirmado",
+    "amount": 1500.50,
+    "date": "2023-05-31",
+    "description": "Pagamento referente às horas trabalhadas em Maio",
+    "reference": "Pagamento Maio/2023",
+    "paymentMethod": "bank_transfer",
+    "status": "completed", // Status atualizado
+    "confirmedAt": "2023-06-01T10:00:00", // Data/hora da confirmação
+    "periodStart": "2023-05-01",
+    "periodEnd": "2023-05-31",
+    "user": { "id": "uuid-do-funcionario", "name": "Nome Funcionário" },
+    "creator": { "id": "uuid-do-admin", "name": "Nome Admin/Manager" },
+    "timeEntries": [
+      // ... (detalhes dos time entries associados)
+    ]
+  }
+}
+```
+
+**Respostas de Erro:**
+- **400 Bad Request:** Pagamento já está confirmado ou não pode ser confirmado (status inválido).
+- **401 Unauthorized:** Token inválido ou expirado.
+- **403 Forbidden:** Usuário autenticado não é o destinatário do pagamento.
+- **404 Not Found:** Pagamento com o ID fornecido não encontrado.
+- **500 Internal Server Error:** Erro inesperado no servidor.
+
+#### Criar Pagamento (Admin/Manager)
+
+**Endpoint:** `/mobile-payments`
+
+**Método:** `POST`
+
+**Headers:**
+```
+Authorization: Bearer ... (Token de Admin ou Manager)
+```
+
+**Descrição:** Permite que um **Administrador** ou **Gerente** crie um novo registro de pagamento para um funcionário de sua empresa, associando-o a registros de horas específicos.
+
+**Body:**
+```json
+{
+  "userId": "uuid-do-funcionario",
+  "amount": 1500.50, // Valor total do pagamento
+  "date": "2023-05-31", // Data do pagamento
+  "paymentMethod": "bank_transfer", // Ex: bank_transfer, pix, cash
+  "reference": "Pagamento Maio/2023", // Referência opcional
+  "description": "Pagamento referente às horas trabalhadas em Maio", // Descrição opcional
+  "status": "pending", // Status inicial (pending, completed, etc.)
+  "periodStart": "2023-05-01", // Início do período coberto
+  "periodEnd": "2023-05-31", // Fim do período coberto
+  "timeEntryIds": [
+    "uuid-registro-hora-1",
+    "uuid-registro-hora-2"
+    // Array com os IDs dos TimeEntry aprovados e não pagos a serem incluídos
+  ]
+}
+```
+
+**Resposta de Sucesso (201):**
+```json
+{
+  "payment": {
+    "id": "payment-uuid-criado",
+    "amount": 1500.50,
+    "date": "2023-05-31",
+    "description": "Pagamento referente às horas trabalhadas em Maio",
+    "reference": "Pagamento Maio/2023",
+    "paymentMethod": "bank_transfer",
+    "status": "pending",
+    "periodStart": "2023-05-01",
+    "periodEnd": "2023-05-31",
+    "user": { "id": "uuid-do-funcionario", "name": "Nome Funcionário" },
+    "creator": { "id": "uuid-do-admin", "name": "Nome Admin/Manager" },
+    "timeEntries": [
+      { "id": "uuid-registro-hora-1", "date": "2023-05-10", "totalHours": 8, "amount": 750.25 },
+      { "id": "uuid-registro-hora-2", "date": "2023-05-11", "totalHours": 8, "amount": 750.25 }
+    ]
+  }
+}
+```
+
+**Respostas de Erro:**
+- **400 Bad Request:** Dados inválidos no corpo da requisição (ver `details` na resposta).
+- **401 Unauthorized:** Token inválido ou expirado.
+- **403 Forbidden:** Usuário não tem permissão (não é Admin/Manager) ou funcionário alvo não pertence à empresa.
+- **404 Not Found:** Usuário alvo (`userId`) não encontrado.
+- **409 Conflict:** Um ou mais `timeEntryIds` já estão associados a outro pagamento.
+- **500 Internal Server Error:** Erro inesperado no servidor.
 
 #### Verificar Saldo do Usuário
 
@@ -1228,6 +1387,49 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
   }
 }
 ```
+
+### Administração (Endpoints para Admin/Manager)
+
+#### Listar Usuários da Empresa
+
+**Endpoint:** `/mobile-admin/users`
+
+**Método:** `GET`
+
+**Headers:**
+```
+Authorization: Bearer ... (Token de Admin ou Manager)
+```
+
+**Descrição:** Retorna uma lista de todos os usuários (funcionários, gerentes, etc.) pertencentes à mesma empresa do Admin/Manager autenticado. Útil para selecionar um funcionário ao criar um pagamento.
+
+**Resposta de Sucesso (200):**
+```json
+{
+  "users": [
+    {
+      "id": "uuid-user-1",
+      "name": "Funcionário Um",
+      "email": "um@empresa.com",
+      "role": "EMPLOYEE",
+      "hourlyRate": 25.50
+    },
+    {
+      "id": "uuid-user-2",
+      "name": "Gerente Silva",
+      "email": "silva@empresa.com",
+      "role": "MANAGER",
+      "hourlyRate": null
+    }
+  ]
+}
+```
+
+**Respostas de Erro:**
+- **401 Unauthorized:** Token inválido ou expirado.
+- **403 Forbidden:** Usuário não tem permissão (não é Admin/Manager).
+- **400 Bad Request:** Usuário autenticado não está associado a uma empresa.
+- **500 Internal Server Error:** Erro inesperado no servidor.
 
 ## Implementação no React Native
 

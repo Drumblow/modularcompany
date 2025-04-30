@@ -207,24 +207,65 @@ export async function GET(req: NextRequest) {
     // Processar filtro de registros não pagos
     if (unpaidParam === 'true') {
       try {
-        // Buscar IDs de registros associados a pagamentos
-        const paymentTimeEntries = await prisma.paymentTimeEntry.findMany({
-          where: {
-            timeEntry: {
-              userId: auth.id
+        // Determinar para qual(is) usuário(s) buscar registros pagos
+        let targetUserIds: string[] = [];
+        if (auth.role === 'EMPLOYEE') {
+          targetUserIds = [auth.id];
+        } else if (auth.role === 'ADMIN' || auth.role === 'MANAGER') {
+          if (userIdParam) {
+            // Verificar se o userIdParam pertence à empresa
+            const targetUser = await prisma.user.findFirst({
+              where: { id: userIdParam, companyId: auth.companyId },
+              select: { id: true }
+            });
+            if (targetUser) {
+              targetUserIds = [userIdParam];
             }
-          },
-          select: {
-            timeEntryId: true
+          } else {
+            // Se nenhum usuário específico, buscar para todos da empresa
+            const usersInCompany = await prisma.user.findMany({
+              where: { companyId: auth.companyId },
+              select: { id: true }
+            });
+            targetUserIds = usersInCompany.map(u => u.id);
           }
-        });
+        } else if (auth.role === 'DEVELOPER') {
+          if (userIdParam) {
+            targetUserIds = [userIdParam];
+          } else {
+            // Desenvolvedor buscando não pagos sem especificar usuário - pode ser complexo,
+            // por ora, vamos focar nos casos de uso principais. Poderia buscar todos.
+            console.warn('Mobile - Filtro unpaid=true para Developer sem userId não é totalmente suportado ainda.');
+          }
+        }
         
-        const excludeTimeEntryIds = paymentTimeEntries.map(pte => pte.timeEntryId);
+        console.log(`Mobile - Verificando registros pagos para os usuários: ${targetUserIds.join(', ')}`);
         
-        if (excludeTimeEntryIds.length > 0) {
-          where.id = {
-            notIn: excludeTimeEntryIds
-          };
+        if (targetUserIds.length > 0) {
+          // Buscar IDs de registros associados a pagamentos para os usuários alvo
+          const paymentTimeEntries = await prisma.paymentTimeEntry.findMany({
+            where: {
+              timeEntry: {
+                userId: { in: targetUserIds }
+              }
+            },
+            select: {
+              timeEntryId: true
+            }
+          });
+          
+          const excludeTimeEntryIds = paymentTimeEntries.map(pte => pte.timeEntryId);
+          console.log(`Mobile - Excluindo ${excludeTimeEntryIds.length} registros já pagos.`);
+          
+          if (excludeTimeEntryIds.length > 0) {
+            // Adicionar condição para excluir IDs já pagos
+            where.id = {
+              ...(where.id || {}), // Preservar outras condições de ID se houver
+              notIn: excludeTimeEntryIds
+            };
+          }
+        } else {
+          console.log('Mobile - Nenhum usuário alvo para verificar pagamentos.');
         }
       } catch (paymentError) {
         console.error('Erro ao processar filtro de não pagos:', paymentError);
