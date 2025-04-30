@@ -1431,6 +1431,79 @@ Authorization: Bearer ... (Token de Admin ou Manager)
 - **400 Bad Request:** Usuário autenticado não está associado a uma empresa.
 - **500 Internal Server Error:** Erro inesperado no servidor.
 
+#### Listar Pagamentos da Empresa
+
+**Endpoint:** `/mobile-admin/payments`
+
+**Método:** `GET`
+
+**Headers:**
+```
+Authorization: Bearer ... (Token de Admin ou Manager)
+```
+
+**Descrição:** Retorna uma lista paginada de pagamentos **criados para os usuários** da empresa do Admin/Manager autenticado. Este endpoint é ideal para exibir as abas "Pendentes" e "Concluídos" no aplicativo.
+
+**Query Parameters (opcionais):**
+- `status`: Filtrar por status. Pode ser um único status (`pending`, `completed`, etc.) ou múltiplos status separados por vírgula (`pending,awaiting_confirmation`).
+- `userId`: Filtrar pagamentos destinados a um funcionário específico.
+- `startDate`: Filtrar pagamentos a partir desta data (formato YYYY-MM-DD).
+- `endDate`: Filtrar pagamentos até esta data (formato YYYY-MM-DD).
+- `page`: Número da página para paginação (padrão: 1).
+- `limit`: Pagamentos por página (padrão: 50).
+- `sortBy`: Campo para ordenação (`date`, `amount`, `status`, padrão: `date`).
+- `sortOrder`: Direção da ordenação (`asc`, `desc`, padrão: `desc`).
+
+**Resposta de Sucesso (200):**
+```json
+{
+  "payments": [
+    {
+      "id": "uuid-pagamento-1",
+      "amount": 123.45,
+      "date": "2025-04-30",
+      "description": "Pagamento criado via teste",
+      "reference": "Teste Pagamento Mobile 1746035545288",
+      "paymentMethod": "pix",
+      "status": "completed",
+      "confirmedAt": "2025-04-30T13:52:28",
+      "periodStart": "2025-04-29",
+      "periodEnd": "2025-04-30",
+      "user": { // Destinatário
+        "id": "uuid-funcionario",
+        "name": "Funcionário Mobile Teste",
+        "email": "funcionario_mobile_test@teste.com"
+      },
+      "creator": { // Quem criou
+        "id": "uuid-admin",
+        "name": "Admin Mobile Teste"
+      }
+    }
+    // ... outros pagamentos
+  ],
+  "pagination": {
+    "total": 5,
+    "page": 1,
+    "limit": 50,
+    "pages": 1
+  },
+  "appliedFilters": {
+    "status": "completed",
+    "userId": null,
+    "startDate": null,
+    "endDate": null,
+    "sortBy": "date",
+    "sortOrder": "desc"
+  }
+}
+```
+
+**Respostas de Erro:**
+- **400 Bad Request:** Parâmetros inválidos (ex: formato de data incorreto).
+- **401 Unauthorized:** Token inválido ou expirado.
+- **403 Forbidden:** Usuário não tem permissão (não é Admin/Manager).
+- **500 Internal Server Error:** Erro inesperado no servidor.
+
 ## Implementação no React Native
 
 ### Exemplos de Código

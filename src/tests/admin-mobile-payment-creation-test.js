@@ -224,6 +224,60 @@ async function testarCriacaoPagamentoAdmin() {
       }
     }
 
+    await sleep(STEP_DELAY);
+
+    // Parte 6.7: Listar Pagamentos Pendentes (como admin)
+    if (adminToken) {
+      console.log('\n📊 Listando pagamentos PENDENTES da empresa (como admin)...');
+      try {
+        const response = await axios.get(`${BASE_URL}/mobile-admin/payments`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+          params: { status: 'pending,awaiting_confirmation' } // Buscar pendentes e aguardando
+        });
+        const pendingPayments = response.data.payments;
+        console.log(`  ✅ Encontrados ${pendingPayments.length} pagamentos pendentes/aguardando.`);
+        // Verificar se o pagamento recém-criado NÃO está aqui (já foi confirmado)
+        if (paymentId && pendingPayments.some(p => p.id === paymentId)) {
+          console.error(`  ❌ ERRO: Pagamento ${paymentId} (confirmado) ainda aparece como pendente!`);
+        } else if (paymentId) {
+          console.log(`  ✅ Pagamento ${paymentId} (confirmado) não está na lista de pendentes.`);
+        }
+        // Logar alguns detalhes se houver
+        pendingPayments.slice(0, 2).forEach(p => console.log(`    - ID: ${p.id}, Status: ${p.status}, Valor: ${p.amount}, Para: ${p.user.name}`));
+
+      } catch (error) {
+        console.error('  ❌ Falha ao listar pagamentos pendentes:', error.response?.data || error.message);
+      }
+    }
+    
+    await sleep(STEP_DELAY);
+
+    // Parte 6.8: Listar Pagamentos Concluídos (como admin)
+    if (adminToken && paymentId) { // Apenas se um pagamento foi criado e confirmado
+      console.log('\n🧾 Listando pagamentos CONCLUÍDOS da empresa (como admin)...');
+      try {
+        const response = await axios.get(`${BASE_URL}/mobile-admin/payments`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+          params: { status: 'completed' } // Buscar concluídos
+        });
+        const completedPayments = response.data.payments;
+        console.log(`  ✅ Encontrados ${completedPayments.length} pagamentos concluídos.`);
+        // Verificar se o pagamento confirmado está na lista
+        const foundConfirmed = completedPayments.find(p => p.id === paymentId);
+        if (foundConfirmed) {
+          console.log(`  ✅ Pagamento ${paymentId} (confirmado) encontrado na lista de concluídos.`);
+          console.log(`    - Status: ${foundConfirmed.status}, Confirmado em: ${foundConfirmed.confirmedAt}`);
+        } else {
+          console.error(`  ❌ ERRO: Pagamento ${paymentId} (confirmado) NÃO encontrado na lista de concluídos!`);
+        }
+        // Logar alguns detalhes se houver mais
+        completedPayments.filter(p => p.id !== paymentId).slice(0, 2).forEach(p => console.log(`    - Outro: ID: ${p.id}, Status: ${p.status}, Valor: ${p.amount}, Para: ${p.user.name}`));
+
+      } catch (error) {
+        console.error('  ❌ Falha ao listar pagamentos concluídos:', error.response?.data || error.message);
+      }
+    }
+
   } catch (error) {
     console.error('❌ Erro GERAL no teste:', error);
   } finally {
