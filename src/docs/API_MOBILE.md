@@ -106,8 +106,39 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 **Query Parameters (opcionais):**
 - `startDate`: Data inicial no formato ISO (YYYY-MM-DD)
 - `endDate`: Data final no formato ISO (YYYY-MM-DD)
+- `userId`: ID do usuário específico (apenas para ADMIN, MANAGER e DEVELOPER)
+- `approved`: Filtrar por status de aprovação (true/false)
+- `rejected`: Filtrar por status de rejeição (true/false)
+- `project`: Filtrar por nome do projeto
+- `minHours`: Filtrar por horas mínimas
+- `maxHours`: Filtrar por horas máximas
+- `unpaid`: Filtrar apenas registros não pagos (true/false)
+- `page`: Número da página (padrão: 1)
+- `limit`: Registros por página (padrão: 50)
+- `sortBy`: Campo para ordenação (date, hours, createdAt)
+- `sortOrder`: Direção da ordenação (asc, desc)
 
 Se não especificado, retorna registros do mês atual.
+
+**Controle de Acesso por Papel:**
+
+- **DEVELOPER**: Acesso completo a todos os registros do sistema
+  - Pode ver registros de qualquer usuário
+  - Pode filtrar por userId específico
+
+- **ADMIN**: Acesso aos registros da sua empresa
+  - Pode ver registros de todos os usuários da mesma empresa
+  - Pode filtrar por userId específico (desde que o usuário pertença à mesma empresa)
+  - Não pode ver registros de outras empresas
+
+- **MANAGER**: Acesso aos registros da sua equipe
+  - Pode ver registros de todos os usuários da mesma empresa
+  - Pode filtrar por userId específico (desde que o usuário pertença à mesma empresa)
+  - Não pode ver registros de outras empresas
+
+- **EMPLOYEE**: Acesso restrito aos próprios registros
+  - Pode ver apenas seus próprios registros
+  - Não pode utilizar o parâmetro userId
 
 **Resposta de Sucesso (200):**
 ```json
@@ -125,6 +156,13 @@ Se não especificado, retorna registros do mês atual.
       "rejected": null,
       "rejectionReason": null,
       "userId": "123456",
+      "user": {
+        "id": "123456",
+        "name": "Nome do Usuário",
+        "email": "usuario@exemplo.com",
+        "hourlyRate": 50,
+        "companyId": "789012"
+      },
       "createdAt": "2023-04-15T08:50:00",
       "updatedAt": "2023-04-15T17:10:00"
     }
@@ -132,9 +170,58 @@ Se não especificado, retorna registros do mês atual.
   "period": {
     "startDate": "2023-04-01",
     "endDate": "2023-04-30"
+  },
+  "pagination": {
+    "total": 45,
+    "page": 1,
+    "limit": 50,
+    "pages": 1
+  },
+  "stats": {
+    "approved": 30,
+    "pending": 10,
+    "rejected": 5,
+    "total": 45
+  },
+  "appliedFilters": {
+    "approved": null,
+    "rejected": null,
+    "project": null,
+    "minHours": null,
+    "maxHours": null,
+    "unpaid": null,
+    "sortBy": "date",
+    "sortOrder": "desc"
   }
 }
 ```
+
+**Exemplos de Uso:**
+
+1. **ADMIN** - Visualizar todos os registros da empresa no mês atual:
+```
+GET /mobile-time-entries
+```
+
+2. **ADMIN** - Visualizar registros de um funcionário específico:
+```
+GET /mobile-time-entries?userId=123456
+```
+
+3. **ADMIN/MANAGER** - Visualizar apenas registros aprovados em um período específico:
+```
+GET /mobile-time-entries?startDate=2023-05-01&endDate=2023-05-31&approved=true
+```
+
+4. **EMPLOYEE** - Visualizar seus próprios registros pendentes:
+```
+GET /mobile-time-entries?approved=null&rejected=null
+```
+
+**Notas Importantes:**
+- Para ADMIN e MANAGER, se nenhum userId for especificado, serão retornados todos os registros de usuários da mesma empresa
+- Para EMPLOYEE, o parâmetro userId é ignorado, pois só podem ver seus próprios registros
+- O parâmetro unpaid=true filtra apenas registros que não foram associados a pagamentos
 
 #### Criar Registro
 
