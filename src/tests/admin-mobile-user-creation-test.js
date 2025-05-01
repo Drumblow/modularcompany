@@ -4,20 +4,27 @@ const { v4: uuidv4 } = require('uuid');
 // Configuração da base URL para testes
 const BASE_URL = process.env.TEST_API_BASE_URL || 'http://localhost:3000/api';
 
-// Dados do Admin para autenticação
+// Dados do Admin para autenticação (usar o email correto)
 const ADMIN_USER = {
-  email: process.env.TEST_ADMIN_EMAIL || 'admin_web_test@teste.com',
+  email: process.env.TEST_ADMIN_EMAIL || 'admin_mobile_test@teste.com',
   password: process.env.TEST_ADMIN_PASSWORD || 'senha123',
 };
 
-// Dados do novo usuário a ser criado
+// Dados do novo usuário a ser criado (com campos opcionais)
 const NEW_USER_EMAIL = `new_mobile_user_${uuidv4()}@test.com`;
+const BIRTH_DATE_ISO = new Date(1995, 5, 15).toISOString(); // Exemplo: 15 de Junho de 1995
 const NEW_USER_DATA = {
-  name: 'Mobile User Test',
+  name: 'Mobile User Test Full',
   email: NEW_USER_EMAIL,
   password: 'password123',
-  role: 'EMPLOYEE', // Pode ser EMPLOYEE ou MANAGER
+  role: 'EMPLOYEE',
   hourlyRate: 30.5,
+  phone: '11987654321',
+  address: 'Rua Teste, 123',
+  city: 'Cidade Teste',
+  state: 'TS',
+  zipCode: '12345-678',
+  birthDate: BIRTH_DATE_ISO,
 };
 
 // Função para obter o token de autenticação
@@ -43,8 +50,8 @@ async function testAdminMobileUserCreation() {
     adminToken = await getAuthToken(ADMIN_USER);
     console.log('✅ Admin autenticado.');
 
-    // 2. Tentar criar um novo usuário
-    console.log(`👤 Criando novo usuário (${NEW_USER_DATA.email})...`);
+    // 2. Tentar criar um novo usuário com todos os campos
+    console.log(`👤 Criando novo usuário (${NEW_USER_DATA.email}) com dados completos...`);
     const createResponse = await axios.post(
       `${BASE_URL}/mobile-admin/users`,
       NEW_USER_DATA,
@@ -66,7 +73,17 @@ async function testAdminMobileUserCreation() {
         createdUser.name !== NEW_USER_DATA.name ||
         createdUser.email !== NEW_USER_DATA.email ||
         createdUser.role !== NEW_USER_DATA.role ||
-        createdUser.hourlyRate !== NEW_USER_DATA.hourlyRate) {
+        createdUser.hourlyRate !== NEW_USER_DATA.hourlyRate ||
+        createdUser.phone !== NEW_USER_DATA.phone ||
+        createdUser.address !== NEW_USER_DATA.address ||
+        createdUser.city !== NEW_USER_DATA.city ||
+        createdUser.state !== NEW_USER_DATA.state ||
+        createdUser.zipCode !== NEW_USER_DATA.zipCode ||
+        // Comparar apenas a parte da data (YYYY-MM-DD) para evitar problemas de timezone/ms
+        (createdUser.birthDate && createdUser.birthDate.split('T')[0]) !== BIRTH_DATE_ISO.split('T')[0]
+       ) {
+      console.log('Esperado birthDate:', BIRTH_DATE_ISO.split('T')[0]);
+      console.log('Recebido birthDate:', createdUser.birthDate ? createdUser.birthDate.split('T')[0] : null);
       throw new Error('Dados retornados do usuário criado não correspondem ao esperado.');
     }
     console.log('✅ Dados retornados verificados.');

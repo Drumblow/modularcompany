@@ -5,13 +5,20 @@ import { verifyMobileAuth, createCorsResponse } from '@/lib/mobile-auth';
 import bcryptjs from 'bcryptjs'; // Usar bcryptjs
 import { z } from 'zod';
 
-// Schema de validação para criação de usuário
+// Schema de validação expandido para criação de usuário
 const createUserSchema = z.object({
   name: z.string().min(1, { message: 'Nome é obrigatório' }),
   email: z.string().email({ message: 'Email inválido' }),
   password: z.string().min(6, { message: 'Senha deve ter no mínimo 6 caracteres' }),
-  role: z.enum(['EMPLOYEE', 'MANAGER']).optional().default('EMPLOYEE'), // Permitir criar EMPLOYEE ou MANAGER
+  role: z.enum(['EMPLOYEE', 'MANAGER']).optional().default('EMPLOYEE'),
   hourlyRate: z.number().optional().nullable(),
+  // Campos opcionais adicionados
+  phone: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  state: z.string().optional().nullable(),
+  zipCode: z.string().optional().nullable(),
+  birthDate: z.string().datetime({ message: "Formato de data inválido (esperado ISO 8601)" }).optional().nullable(), // Espera string ISO 8601
 });
 
 // GET - Listar usuários da empresa para Admins/Managers
@@ -57,7 +64,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST - Endpoint para criar um novo usuário na empresa
+// POST - Endpoint para criar um novo usuário na empresa (com campos opcionais)
 export async function POST(req: NextRequest) {
   // Verificar autenticação
   const { auth, response: authResponse } = await verifyMobileAuth(req);
@@ -81,10 +88,12 @@ export async function POST(req: NextRequest) {
     const validation = createUserSchema.safeParse(body);
 
     if (!validation.success) {
+      // Log detalhado do erro de validação
+      console.error('Erro de validação ao criar usuário:', validation.error.flatten());
       return createCorsResponse({ error: 'Dados inválidos', details: validation.error.flatten().fieldErrors }, 400);
     }
 
-    const { name, email, password, role, hourlyRate } = validation.data;
+    const { name, email, password, role, hourlyRate, phone, address, city, state, zipCode, birthDate } = validation.data;
 
     // Verificar se o email já existe
     const existingUser = await prisma.user.findUnique({
@@ -92,40 +101,63 @@ export async function POST(req: NextRequest) {
     });
 
     if (existingUser) {
-      return createCorsResponse({ error: 'Email já cadastrado' }, 409); // 409 Conflict
+      return createCorsResponse({ error: 'Email já cadastrado' }, 409);
     }
 
-    // Hashear a senha usando bcryptjs
+    // Hashear a senha
     const hashedPassword = await bcryptjs.hash(password, 10);
 
-    // Criar o usuário no banco
-    const newUser = await prisma.user.create({
-      data: {
+    // Preparar dados para criação, incluindo a conversão da data de nascimento
+    const userData: any = {
         name,
         email,
         password: hashedPassword,
-        role, // Role vem do input validado (EMPLOYEE ou MANAGER)
+        role,
         hourlyRate,
-        companyId: auth.companyId, // Associa à empresa do admin/manager
-      },
-      select: { // Selecionar apenas os campos seguros para retornar
+        companyId: auth.companyId,
+        phone,
+        address,
+        city,
+        state,
+        zipCode,
+    };
+
+    // Converter birthDate de string ISO para Date apenas se fornecido
+    if (birthDate) {
+      try {
+        userData.birthDate = new Date(birthDate);
+      } catch (dateError) {
+         console.error('Erro ao converter data de nascimento:', birthDate, dateError);
+         return createCorsResponse({ error: 'Formato inválido para data de nascimento' }, 400);
+      }
+    }
+
+    // Criar o usuário no banco
+    const newUser = await prisma.user.create({
+      data: userData,
+      select: { // Selecionar os campos seguros para retornar, incluindo os novos
         id: true,
         name: true,
         email: true,
         role: true,
         companyId: true,
         hourlyRate: true,
+        phone: true,
+        address: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        birthDate: true,
         createdAt: true,
       }
     });
 
     console.log(`Mobile - Admin/Manager ${auth.id} criou novo usuário ${newUser.id} na empresa ${auth.companyId}`);
-    return createCorsResponse({ user: newUser }, 201); // 201 Created
+    return createCorsResponse({ user: newUser }, 201);
 
   } catch (error) {
     console.error('Erro ao criar usuário:', error);
-    // Tratar erro de constraint única de forma mais específica, se necessário
-     if (error instanceof Error && 'code' in error && error.code === 'P2002' && 'meta' in error && (error.meta as any)?.target?.includes('email')) {
+    if (error instanceof Error && 'code' in error && error.code === 'P2002' && 'meta' in error && (error.meta as any)?.target?.includes('email')) {
       return createCorsResponse({ error: 'Email já cadastrado (conflito DB)' }, 409);
     }
     return createCorsResponse({ error: 'Erro interno ao criar usuário' }, 500);

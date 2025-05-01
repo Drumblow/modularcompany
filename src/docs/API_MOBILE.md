@@ -67,7 +67,7 @@ O token expira após 24 horas, exigindo um novo login.
 
 **Headers:**
 ```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Authorization: Bearer ...
 ```
 
 **Resposta de Sucesso (200):**
@@ -80,7 +80,14 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     "role": "EMPLOYEE",
     "companyId": "789012",
     "hourlyRate": 50,
-    "createdAt": "2023-01-15T10:30:00",
+    "phone": "11999998888",
+    "address": "Rua Exemplo, 456",
+    "city": "Exemplópolis",
+    "state": "EX",
+    "zipCode": "12345-000",
+    "birthDate": "1990-08-20T00:00:00.000Z",
+    "createdAt": "2023-01-15T10:30:00.000Z",
+    "updatedAt": "2023-10-27T15:45:00.000Z",
     "company": {
       "id": "789012",
       "name": "Empresa Exemplo",
@@ -875,14 +882,22 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 **Headers:**
 ```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Authorization: Bearer ...
 ```
 
-**Body:**
+**Descrição:** Permite que o usuário autenticado atualize seus próprios dados de perfil. Apenas os campos fornecidos no corpo serão atualizados.
+
+**Body (campos opcionais):**
 ```json
 {
-  "name": "Novo Nome",
-  "email": "novo.email@exemplo.com"
+  "name": "Novo Nome Atualizado",
+  "email": "novo.email.atualizado@exemplo.com",
+  "phone": "11988887777",
+  "address": "Avenida Principal, 789, Ap 101",
+  "city": "Nova Cidade",
+  "state": "NC",
+  "zipCode": "54321-123",
+  "birthDate": "1992-05-10T00:00:00.000Z" // Ou null para remover
 }
 ```
 
@@ -891,12 +906,19 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 {
   "user": {
     "id": "123456",
-    "name": "Novo Nome",
-    "email": "novo.email@exemplo.com",
+    "name": "Novo Nome Atualizado",
+    "email": "novo.email.atualizado@exemplo.com",
     "role": "EMPLOYEE",
     "companyId": "789012",
     "hourlyRate": 50,
-    "createdAt": "2023-01-15T10:30:00",
+    "phone": "11988887777",
+    "address": "Avenida Principal, 789, Ap 101",
+    "city": "Nova Cidade",
+    "state": "NC",
+    "zipCode": "54321-123",
+    "birthDate": "1992-05-10T00:00:00.000Z",
+    "createdAt": "2023-01-15T10:30:00.000Z",
+    "updatedAt": "2023-10-27T16:00:00.000Z", // Hora da atualização
     "company": {
       "id": "789012",
       "name": "Empresa Exemplo",
@@ -1451,11 +1473,17 @@ Authorization: Bearer ... (Token de Admin ou Manager)
 **Body:**
 ```json
 {
-  "name": "Novo Funcionario",
-  "email": "novo.funcionario@empresa.com",
-  "password": "senhaForte123", // Senha inicial do usuário
-  "role": "EMPLOYEE", // Obrigatório: "EMPLOYEE" ou "MANAGER"
-  "hourlyRate": 25.50 // Opcional: Valor por hora (Float)
+  "name": "Novo Funcionario Completo",
+  "email": "novo.completo@empresa.com",
+  "password": "senhaInicial123",
+  "role": "EMPLOYEE",
+  "hourlyRate": 35.00,
+  phone: "48912345678",
+  address: "Rua dos Testes, 1000",
+  city: "Testelândia",
+  state: "TS",
+  zipCode: "98765-432",
+  birthDate: "1988-01-25T00:00:00.000Z"
 }
 ```
 
@@ -1463,13 +1491,19 @@ Authorization: Bearer ... (Token de Admin ou Manager)
 ```json
 {
   "user": {
-    "id": "uuid-novo-usuario",
-    "name": "Novo Funcionario",
-    "email": "novo.funcionario@empresa.com",
+    "id": "uuid-novo-usuario-completo",
+    "name": "Novo Funcionario Completo",
+    "email": "novo.completo@empresa.com",
     "role": "EMPLOYEE",
     "companyId": "uuid-da-empresa-do-admin",
-    "hourlyRate": 25.50,
-    "createdAt": "2023-10-27T10:00:00.000Z"
+    "hourlyRate": 35.00,
+    "phone": "48912345678",
+    "address": "Rua dos Testes, 1000",
+    "city": "Testelândia",
+    "state": "TS",
+    "zipCode": "98765-432",
+    "birthDate": "1988-01-25T00:00:00.000Z",
+    "createdAt": "2023-10-27T16:15:00.000Z"
   }
 }
 ```
