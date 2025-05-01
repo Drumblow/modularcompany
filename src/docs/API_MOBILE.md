@@ -1435,6 +1435,52 @@ Authorization: Bearer ... (Token de Admin ou Manager)
 - **400 Bad Request:** Usuário autenticado não está associado a uma empresa.
 - **500 Internal Server Error:** Erro inesperado no servidor.
 
+#### Criar Usuário na Empresa (Admin/Manager)
+
+**Endpoint:** `/mobile-admin/users`
+
+**Método:** `POST`
+
+**Headers:**
+```
+Authorization: Bearer ... (Token de Admin ou Manager)
+```
+
+**Descrição:** Permite que um **Administrador** ou **Gerente** crie um novo usuário (funcionário ou outro gerente) associado à sua empresa.
+
+**Body:**
+```json
+{
+  "name": "Novo Funcionario",
+  "email": "novo.funcionario@empresa.com",
+  "password": "senhaForte123", // Senha inicial do usuário
+  "role": "EMPLOYEE", // Obrigatório: "EMPLOYEE" ou "MANAGER"
+  "hourlyRate": 25.50 // Opcional: Valor por hora (Float)
+}
+```
+
+**Resposta de Sucesso (201 Created):**
+```json
+{
+  "user": {
+    "id": "uuid-novo-usuario",
+    "name": "Novo Funcionario",
+    "email": "novo.funcionario@empresa.com",
+    "role": "EMPLOYEE",
+    "companyId": "uuid-da-empresa-do-admin",
+    "hourlyRate": 25.50,
+    "createdAt": "2023-10-27T10:00:00.000Z"
+  }
+}
+```
+
+**Respostas de Erro:**
+- **400 Bad Request:** Dados inválidos no corpo da requisição (ex: email inválido, senha curta, `role` inválido, `hourlyRate` não numérico). Verificar `details` na resposta.
+- **401 Unauthorized:** Token inválido ou expirado.
+- **403 Forbidden:** Usuário autenticado não é Admin ou Manager.
+- **409 Conflict:** O email fornecido já está cadastrado no sistema.
+- **500 Internal Server Error:** Erro inesperado no servidor.
+
 #### Listar Pagamentos da Empresa
 
 **Endpoint:** `/mobile-admin/payments`
