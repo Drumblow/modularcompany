@@ -23,6 +23,12 @@ export async function GET(
     const payment = await prisma.payment.findUnique({
       where: { id },
       include: {
+        user: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
         creator: {
           select: {
             id: true,
@@ -69,6 +75,10 @@ export async function GET(
         id: payment.creator?.id || null,
         name: payment.creator?.name || 'Usuário não informado',
         email: payment.creator?.email || null
+      },
+      user: {
+        id: payment.user.id,
+        name: payment.user.name
       },
       timeEntries: payment.timeEntries.map(entry => ({
         id: entry.timeEntry.id,

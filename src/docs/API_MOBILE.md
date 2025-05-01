@@ -568,6 +568,10 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
       "name": "Gerente da Silva",
       "email": "gerente@exemplo.com"
     },
+    "user": {
+      "id": "uuid-do-funcionario",
+      "name": "Nome Funcionário"
+    },
     "timeEntries": [
       {
         "id": "entry123",
@@ -1469,12 +1473,12 @@ Authorization: Bearer ... (Token de Admin ou Manager)
       "confirmedAt": "2025-04-30T13:52:28",
       "periodStart": "2025-04-29",
       "periodEnd": "2025-04-30",
-      "user": { // Destinatário
+      "user": {
         "id": "uuid-funcionario",
         "name": "Funcionário Mobile Teste",
         "email": "funcionario_mobile_test@teste.com"
       },
-      "creator": { // Quem criou
+      "creator": {
         "id": "uuid-admin",
         "name": "Admin Mobile Teste"
       }
