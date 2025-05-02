@@ -1,6 +1,7 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { verifyMobileAuth, createCorsResponse } from '@/lib/mobile-auth';
+import { verifyMobileAuth } from '@/lib/mobile-auth';
+import { applyCorsHeaders, handleCorsPreflight } from '@/lib/cors';
 // import bcrypt from 'bcrypt'; // Remover bcrypt
 import bcryptjs from 'bcryptjs'; // Usar bcryptjs
 import { z } from 'zod';
@@ -23,19 +24,29 @@ const createUserSchema = z.object({
 
 // GET - Listar usuários da empresa para Admins/Managers
 export async function GET(req: NextRequest) {
-  const { auth, response } = await verifyMobileAuth(req);
+  // Lidar com preflight CORS
+  const preflightResponse = handleCorsPreflight(req);
+  if (preflightResponse) {
+    return preflightResponse;
+  }
 
-  if (!auth || response) {
-    return response;
+  // Verificar autenticação (renomear response para evitar conflito)
+  const { auth, response: authResponse } = await verifyMobileAuth(req);
+
+  if (!auth || authResponse) {
+    // Adiciona cabeçalhos CORS à resposta de erro antes de retornar
+    return applyCorsHeaders(req, authResponse || new NextResponse(JSON.stringify({ error: 'Authentication required' }), { status: 401 }));
   }
 
   // Verificar permissões
   if (auth.role !== 'ADMIN' && auth.role !== 'MANAGER') {
-    return createCorsResponse({ error: 'Acesso negado. Apenas Admins e Managers podem listar usuários.' }, 403);
+    // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
+    return applyCorsHeaders(req, NextResponse.json({ error: 'Acesso negado. Apenas Admins e Managers podem listar usuários.' }, { status: 403 }));
   }
 
   if (!auth.companyId) {
-    return createCorsResponse({ error: 'Usuário não está associado a uma empresa.' }, 400);
+    // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
+    return applyCorsHeaders(req, NextResponse.json({ error: 'Usuário não está associado a uma empresa.' }, { status: 400 }));
   }
 
   try {
@@ -57,30 +68,41 @@ export async function GET(req: NextRequest) {
 
     console.log(`Mobile - ${auth.role} ${auth.id} listou ${users.length} usuários da empresa ${auth.companyId}`);
 
-    return createCorsResponse({ users });
+    // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
+    return applyCorsHeaders(req, NextResponse.json({ users }));
   } catch (error) {
     console.error('Erro ao listar usuários para admin/manager:', error);
-    return createCorsResponse({ error: 'Erro ao buscar usuários da empresa' }, 500);
+    // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
+    return applyCorsHeaders(req, NextResponse.json({ error: 'Erro ao buscar usuários da empresa' }, { status: 500 }));
   }
 }
 
 // POST - Endpoint para criar um novo usuário na empresa (com campos opcionais)
 export async function POST(req: NextRequest) {
-  // Verificar autenticação
+  // Lidar com preflight CORS
+  const preflightResponse = handleCorsPreflight(req);
+  if (preflightResponse) {
+    return preflightResponse;
+  }
+
+  // Verificar autenticação (renomear response para evitar conflito)
   const { auth, response: authResponse } = await verifyMobileAuth(req);
   if (!auth || authResponse) {
-    return authResponse;
+    // Adiciona cabeçalhos CORS à resposta de erro antes de retornar
+    return applyCorsHeaders(req, authResponse || new NextResponse(JSON.stringify({ error: 'Authentication required' }), { status: 401 }));
   }
 
   // Verificar autorização (ADMIN ou MANAGER)
   if (auth.role !== 'ADMIN' && auth.role !== 'MANAGER') {
-     return createCorsResponse({ error: 'Acesso não autorizado para esta operação' }, 403);
+     // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
+     return applyCorsHeaders(req, NextResponse.json({ error: 'Acesso não autorizado para esta operação' }, { status: 403 }));
   }
 
   try {
     // Verificar se o admin/manager pertence a uma empresa
      if (!auth.companyId) {
-      return createCorsResponse({ error: 'Usuário administrador não está associado a uma empresa para criar novos usuários' }, 400);
+      // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
+      return applyCorsHeaders(req, NextResponse.json({ error: 'Usuário administrador não está associado a uma empresa para criar novos usuários' }, { status: 400 }));
     }
 
     // Validar o corpo da requisição
@@ -90,7 +112,8 @@ export async function POST(req: NextRequest) {
     if (!validation.success) {
       // Log detalhado do erro de validação
       console.error('Erro de validação ao criar usuário:', validation.error.flatten());
-      return createCorsResponse({ error: 'Dados inválidos', details: validation.error.flatten().fieldErrors }, 400);
+      // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
+      return applyCorsHeaders(req, NextResponse.json({ error: 'Dados inválidos', details: validation.error.flatten().fieldErrors }, { status: 400 }));
     }
 
     const { name, email, password, role, hourlyRate, phone, address, city, state, zipCode, birthDate } = validation.data;
@@ -101,7 +124,8 @@ export async function POST(req: NextRequest) {
     });
 
     if (existingUser) {
-      return createCorsResponse({ error: 'Email já cadastrado' }, 409);
+      // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
+      return applyCorsHeaders(req, NextResponse.json({ error: 'Email já cadastrado' }, { status: 409 }));
     }
 
     // Hashear a senha
@@ -128,7 +152,8 @@ export async function POST(req: NextRequest) {
         userData.birthDate = new Date(birthDate);
       } catch (dateError) {
          console.error('Erro ao converter data de nascimento:', birthDate, dateError);
-         return createCorsResponse({ error: 'Formato inválido para data de nascimento' }, 400);
+         // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
+         return applyCorsHeaders(req, NextResponse.json({ error: 'Formato inválido para data de nascimento' }, { status: 400 }));
       }
     }
 
@@ -153,18 +178,25 @@ export async function POST(req: NextRequest) {
     });
 
     console.log(`Mobile - Admin/Manager ${auth.id} criou novo usuário ${newUser.id} na empresa ${auth.companyId}`);
-    return createCorsResponse({ user: newUser }, 201);
+    // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
+    return applyCorsHeaders(req, NextResponse.json({ user: newUser }, { status: 201 }));
 
   } catch (error) {
     console.error('Erro ao criar usuário:', error);
+    // Ajustar tratamento de erro para usar a nova resposta CORS
     if (error instanceof Error && 'code' in error && error.code === 'P2002' && 'meta' in error && (error.meta as any)?.target?.includes('email')) {
-      return createCorsResponse({ error: 'Email já cadastrado (conflito DB)' }, 409);
+      return applyCorsHeaders(req, NextResponse.json({ error: 'Email já cadastrado (conflito DB)' }, { status: 409 }));
     }
-    return createCorsResponse({ error: 'Erro interno ao criar usuário' }, 500);
+    return applyCorsHeaders(req, NextResponse.json({ error: 'Erro interno ao criar usuário' }, { status: 500 }));
   }
 }
 
-// OPTIONS - Handler para CORS preflight
-export async function OPTIONS(req: Request) {
-  return createCorsResponse({});
+// OPTIONS - Handler para CORS preflight (usando o helper)
+export async function OPTIONS(request: NextRequest) { // Mudar para NextRequest
+  const preflightResponse = handleCorsPreflight(request);
+  if (preflightResponse) {
+    return preflightResponse;
+  }
+  // Fallback
+  return new NextResponse(null, { status: 204 });
 } 
