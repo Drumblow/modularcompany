@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 let nextConfig = {
   reactStrictMode: true,
+  trailingSlash: false,
   images: {
     domains: ['avatars.githubusercontent.com', 'lh3.googleusercontent.com', 'res.cloudinary.com'],
   },
