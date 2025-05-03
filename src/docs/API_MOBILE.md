@@ -67,7 +67,7 @@ O token expira após 24 horas, exigindo um novo login.
 
 **Headers:**
 ```
-Authorization: Bearer ...
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 **Resposta de Sucesso (200):**
@@ -80,14 +80,7 @@ Authorization: Bearer ...
     "role": "EMPLOYEE",
     "companyId": "789012",
     "hourlyRate": 50,
-    "phone": "11999998888",
-    "address": "Rua Exemplo, 456",
-    "city": "Exemplópolis",
-    "state": "EX",
-    "zipCode": "12345-000",
-    "birthDate": "1990-08-20T00:00:00.000Z",
-    "createdAt": "2023-01-15T10:30:00.000Z",
-    "updatedAt": "2023-10-27T15:45:00.000Z",
+    "createdAt": "2023-01-15T10:30:00",
     "company": {
       "id": "789012",
       "name": "Empresa Exemplo",
@@ -882,22 +875,14 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 **Headers:**
 ```
-Authorization: Bearer ...
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-**Descrição:** Permite que o usuário autenticado atualize seus próprios dados de perfil. Apenas os campos fornecidos no corpo serão atualizados.
-
-**Body (campos opcionais):**
+**Body:**
 ```json
 {
-  "name": "Novo Nome Atualizado",
-  "email": "novo.email.atualizado@exemplo.com",
-  "phone": "11988887777",
-  "address": "Avenida Principal, 789, Ap 101",
-  "city": "Nova Cidade",
-  "state": "NC",
-  "zipCode": "54321-123",
-  "birthDate": "1992-05-10T00:00:00.000Z" // Ou null para remover
+  "name": "Novo Nome",
+  "email": "novo.email@exemplo.com"
 }
 ```
 
@@ -906,19 +891,12 @@ Authorization: Bearer ...
 {
   "user": {
     "id": "123456",
-    "name": "Novo Nome Atualizado",
-    "email": "novo.email.atualizado@exemplo.com",
+    "name": "Novo Nome",
+    "email": "novo.email@exemplo.com",
     "role": "EMPLOYEE",
     "companyId": "789012",
     "hourlyRate": 50,
-    "phone": "11988887777",
-    "address": "Avenida Principal, 789, Ap 101",
-    "city": "Nova Cidade",
-    "state": "NC",
-    "zipCode": "54321-123",
-    "birthDate": "1992-05-10T00:00:00.000Z",
-    "createdAt": "2023-01-15T10:30:00.000Z",
-    "updatedAt": "2023-10-27T16:00:00.000Z", // Hora da atualização
+    "createdAt": "2023-01-15T10:30:00",
     "company": {
       "id": "789012",
       "name": "Empresa Exemplo",
@@ -1455,64 +1433,6 @@ Authorization: Bearer ... (Token de Admin ou Manager)
 - **401 Unauthorized:** Token inválido ou expirado.
 - **403 Forbidden:** Usuário não tem permissão (não é Admin/Manager).
 - **400 Bad Request:** Usuário autenticado não está associado a uma empresa.
-- **500 Internal Server Error:** Erro inesperado no servidor.
-
-#### Criar Usuário na Empresa (Admin/Manager)
-
-**Endpoint:** `/mobile-admin/users`
-
-**Método:** `POST`
-
-**Headers:**
-```
-Authorization: Bearer ... (Token de Admin ou Manager)
-```
-
-**Descrição:** Permite que um **Administrador** ou **Gerente** crie um novo usuário (funcionário ou outro gerente) associado à sua empresa.
-
-**Body:**
-```json
-{
-  "name": "Novo Funcionario Completo",
-  "email": "novo.completo@empresa.com",
-  "password": "senhaInicial123",
-  "role": "EMPLOYEE",
-  "hourlyRate": 35.00,
-  phone: "48912345678",
-  address: "Rua dos Testes, 1000",
-  city: "Testelândia",
-  state: "TS",
-  zipCode: "98765-432",
-  birthDate: "1988-01-25T00:00:00.000Z"
-}
-```
-
-**Resposta de Sucesso (201 Created):**
-```json
-{
-  "user": {
-    "id": "uuid-novo-usuario-completo",
-    "name": "Novo Funcionario Completo",
-    "email": "novo.completo@empresa.com",
-    "role": "EMPLOYEE",
-    "companyId": "uuid-da-empresa-do-admin",
-    "hourlyRate": 35.00,
-    "phone": "48912345678",
-    "address": "Rua dos Testes, 1000",
-    "city": "Testelândia",
-    "state": "TS",
-    "zipCode": "98765-432",
-    "birthDate": "1988-01-25T00:00:00.000Z",
-    "createdAt": "2023-10-27T16:15:00.000Z"
-  }
-}
-```
-
-**Respostas de Erro:**
-- **400 Bad Request:** Dados inválidos no corpo da requisição (ex: email inválido, senha curta, `role` inválido, `hourlyRate` não numérico). Verificar `details` na resposta.
-- **401 Unauthorized:** Token inválido ou expirado.
-- **403 Forbidden:** Usuário autenticado não é Admin ou Manager.
-- **409 Conflict:** O email fornecido já está cadastrado no sistema.
 - **500 Internal Server Error:** Erro inesperado no servidor.
 
 #### Listar Pagamentos da Empresa

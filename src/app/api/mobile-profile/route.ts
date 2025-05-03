@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   }
   
   try {
-    // Buscar usuário no banco de dados, incluindo campos opcionais
+    // Buscar usuário no banco de dados
     const user = await prisma.user.findUnique({
       where: { id: auth.id },
       select: {
@@ -23,14 +23,7 @@ export async function GET(req: NextRequest) {
         role: true,
         companyId: true,
         hourlyRate: true,
-        phone: true,     // Selecionar
-        address: true,   // Selecionar
-        city: true,      // Selecionar
-        state: true,     // Selecionar
-        zipCode: true,   // Selecionar
-        birthDate: true, // Selecionar
         createdAt: true,
-        updatedAt: true, // Adicionar updatedAt também é útil
         company: {
           select: {
             id: true,
@@ -56,20 +49,13 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Definir schema de validação expandido para atualização de perfil
+// Definir schema de validação para atualização de perfil
 const updateProfileSchema = z.object({
-  name: z.string().min(1, 'Nome é obrigatório').optional(),
-  email: z.string().email('Email inválido').optional(),
-  // Campos opcionais adicionados para atualização
-  phone: z.string().optional().nullable(),
-  address: z.string().optional().nullable(),
-  city: z.string().optional().nullable(),
-  state: z.string().optional().nullable(),
-  zipCode: z.string().optional().nullable(),
-  birthDate: z.string().datetime({ message: "Formato de data inválido (esperado ISO 8601)" }).optional().nullable(), // Espera string ISO 8601
+  name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').optional(),
+  email: z.string().email('Email inválido').optional()
 });
 
-// PUT - Atualizar perfil do usuário (com campos opcionais)
+// PUT - Atualizar perfil do usuário
 export async function PUT(req: NextRequest) {
   // Verificar autenticação
   const { auth, response } = await verifyMobileAuth(req);
@@ -86,14 +72,13 @@ export async function PUT(req: NextRequest) {
     // Validar dados
     const result = updateProfileSchema.safeParse(body);
     if (!result.success) {
-      console.error('Erro de validação ao atualizar perfil:', result.error.flatten());
       return createCorsResponse({
         error: 'Dados inválidos',
-        details: result.error.flatten().fieldErrors
+        details: result.error.format()
       }, 400);
     }
     
-    const { name, email, phone, address, city, state, zipCode, birthDate } = result.data;
+    const { name, email } = result.data;
     
     // Verificar se o email já está em uso (se ele foi fornecido)
     if (email) {
@@ -113,38 +98,13 @@ export async function PUT(req: NextRequest) {
     
     // Preparar dados para atualização
     const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
-    if (email !== undefined) updateData.email = email;
-    if (phone !== undefined) updateData.phone = phone;
-    if (address !== undefined) updateData.address = address;
-    if (city !== undefined) updateData.city = city;
-    if (state !== undefined) updateData.state = state;
-    if (zipCode !== undefined) updateData.zipCode = zipCode;
-    
-    // Converter birthDate de string ISO para Date apenas se fornecido
-    if (birthDate !== undefined) {
-      if (birthDate === null) { // Permitir limpar a data
-        updateData.birthDate = null;
-      } else {
-        try {
-          updateData.birthDate = new Date(birthDate);
-        } catch (dateError) {
-           console.error('Erro ao converter data de nascimento na atualização:', birthDate, dateError);
-           return createCorsResponse({ error: 'Formato inválido para data de nascimento' }, 400);
-        }
-      }
-    }
-
-    // Verificar se há dados para atualizar
-    if (Object.keys(updateData).length === 0) {
-      return createCorsResponse({ error: 'Nenhum dado fornecido para atualização' }, 400);
-    }
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
     
     // Atualizar o usuário
     const updatedUser = await prisma.user.update({
       where: { id: auth.id },
       data: updateData,
-      // Selecionar todos os campos relevantes, incluindo os novos
       select: {
         id: true,
         name: true,
@@ -152,14 +112,7 @@ export async function PUT(req: NextRequest) {
         role: true,
         companyId: true,
         hourlyRate: true,
-        phone: true,     // Incluir na seleção
-        address: true,   // Incluir na seleção
-        city: true,      // Incluir na seleção
-        state: true,     // Incluir na seleção
-        zipCode: true,   // Incluir na seleção
-        birthDate: true, // Incluir na seleção
         createdAt: true,
-        updatedAt: true, // Incluir updatedAt
         company: {
           select: {
             id: true,
@@ -171,7 +124,7 @@ export async function PUT(req: NextRequest) {
     });
     
     // Log de sucesso
-    console.log('Mobile - Perfil atualizado:', { userId: auth.id, fields: Object.keys(updateData) });
+    console.log('Mobile - Perfil atualizado:', { userId: auth.id });
     
     // Retornar dados atualizados
     return createCorsResponse({
@@ -181,10 +134,6 @@ export async function PUT(req: NextRequest) {
     
   } catch (error) {
     console.error('Erro ao atualizar perfil:', error);
-    // Tratar erro específico de email duplicado no update
-    if (error instanceof Error && 'code' in error && error.code === 'P2002' && 'meta' in error && (error.meta as any)?.target?.includes('email')) {
-        return createCorsResponse({ error: 'Este email já está sendo usado por outro usuário' }, 409);
-    }
     return createCorsResponse({ error: 'Erro ao atualizar perfil' }, 500);
   }
 }

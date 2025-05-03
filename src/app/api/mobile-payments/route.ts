@@ -1,25 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
-import { verifyMobileAuth } from '@/lib/mobile-auth';
-import { applyCorsHeaders, handleCorsPreflight } from '@/lib/cors';
+import { verifyMobileAuth, createCorsResponse } from '@/lib/mobile-auth';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { z } from 'zod';
 import { TimeEntry } from '@prisma/client';
 
 export async function GET(req: NextRequest) {
-  // Lidar com preflight CORS
-  const preflightResponse = handleCorsPreflight(req);
-  if (preflightResponse) {
-    return preflightResponse;
-  }
-
   // Verificar autenticação
-  const { auth, response: authResponse } = await verifyMobileAuth(req);
+  const { auth, response } = await verifyMobileAuth(req);
   
-  // Se a verificação falhou, retorne a resposta de erro (com cabeçalhos CORS)
-  if (!auth || authResponse) {
-    // Adiciona cabeçalhos CORS à resposta de erro antes de retornar
-    return applyCorsHeaders(req, authResponse || new NextResponse(JSON.stringify({ error: 'Authentication required' }), { status: 401 }));
+  // Se a verificação falhou, retorne a resposta de erro
+  if (!auth || response) {
+    return response;
   }
 
   // Obter parâmetros de consulta
@@ -116,20 +108,18 @@ export async function GET(req: NextRequest) {
       period: `${format(startDate, 'yyyy-MM-dd')} até ${format(endDate, 'yyyy-MM-dd')}`
     });
     
-    // Retornar dados (com cabeçalhos CORS)
-    const responsePayload = {
+    // Retornar dados
+    return createCorsResponse({ 
       payments: formattedPayments,
       period: {
         startDate: format(startDate, 'yyyy-MM-dd'),
         endDate: format(endDate, 'yyyy-MM-dd')
       }
-    };
-    return applyCorsHeaders(req, NextResponse.json(responsePayload));
+    });
     
   } catch (error) {
     console.error('Erro ao buscar pagamentos:', error);
-    // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
-    return applyCorsHeaders(req, NextResponse.json({ error: 'Erro ao buscar pagamentos' }, { status: 500 }));
+    return createCorsResponse({ error: 'Erro ao buscar pagamentos' }, 500);
   }
 }
 
@@ -149,29 +139,20 @@ const mobilePaymentSchema = z.object({
 
 // POST - Criar um novo pagamento (Admin/Manager)
 export async function POST(req: NextRequest) {
-  // Lidar com preflight CORS
-  const preflightResponse = handleCorsPreflight(req);
-  if (preflightResponse) {
-    return preflightResponse;
-  }
-
   // Verificar autenticação
-  const { auth, response: authResponse } = await verifyMobileAuth(req);
+  const { auth, response } = await verifyMobileAuth(req);
   
-  if (!auth || authResponse) {
-    // Adiciona cabeçalhos CORS à resposta de erro antes de retornar
-    return applyCorsHeaders(req, authResponse || new NextResponse(JSON.stringify({ error: 'Authentication required' }), { status: 401 }));
+  if (!auth || response) {
+    return response;
   }
   
   // Verificar permissões
   if (auth.role !== 'ADMIN' && auth.role !== 'MANAGER') {
-    // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
-    return applyCorsHeaders(req, NextResponse.json({ error: 'Acesso negado. Apenas Admins e Managers podem criar pagamentos.' }, { status: 403 }));
+    return createCorsResponse({ error: 'Acesso negado. Apenas Admins e Managers podem criar pagamentos.' }, 403);
   }
 
   if (!auth.companyId) {
-    // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
-    return applyCorsHeaders(req, NextResponse.json({ error: 'Usuário criador não está associado a uma empresa.' }, { status: 400 }));
+    return createCorsResponse({ error: 'Usuário criador não está associado a uma empresa.' }, 400);
   }
   
   try {
@@ -180,11 +161,10 @@ export async function POST(req: NextRequest) {
     // Validar dados
     const validationResult = mobilePaymentSchema.safeParse(body);
     if (!validationResult.success) {
-      // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
-      return applyCorsHeaders(req, NextResponse.json({
+      return createCorsResponse({
         error: 'Dados de pagamento inválidos.',
         details: validationResult.error.format()
-      }, { status: 400 }));
+      }, 400);
     }
     
     const paymentData = validationResult.data;
@@ -199,8 +179,7 @@ export async function POST(req: NextRequest) {
     });
     
     if (!targetUser) {
-      // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
-      return applyCorsHeaders(req, NextResponse.json({ error: 'Usuário alvo não encontrado ou não pertence à sua empresa.' }, { status: 404 }));
+      return createCorsResponse({ error: 'Usuário alvo não encontrado ou não pertence à sua empresa.' }, 404);
     }
     
     // Buscar os registros de horas selecionados
@@ -216,11 +195,10 @@ export async function POST(req: NextRequest) {
     if (timeEntries.length !== paymentData.timeEntryIds.length) {
       const foundIds = timeEntries.map(te => te.id);
       const missingIds = paymentData.timeEntryIds.filter(id => !foundIds.includes(id));
-      // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
-      return applyCorsHeaders(req, NextResponse.json({
+      return createCorsResponse({
         error: 'Alguns registros de horas não foram encontrados, não pertencem ao usuário ou não estão aprovados.',
         missingOrInvalidIds: missingIds
-      }, { status: 400 }));
+      }, 400);
     }
     
     // Verificar se algum dos registros já foi pago
@@ -233,10 +211,9 @@ export async function POST(req: NextRequest) {
     
     if (alreadyPaid.length > 0) {
       const paidEntryIds = alreadyPaid.map(pte => pte.timeEntryId);
-      // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
-      return applyCorsHeaders(req, NextResponse.json({
+      return createCorsResponse({
         error: `Os seguintes registros de horas já estão associados a outros pagamentos: ${paidEntryIds.join(', ')}`,
-      }, { status: 409 }));
+      }, 409);
     }
     
     // Calcular valor total e por entrada (se necessário)
@@ -273,6 +250,38 @@ export async function POST(req: NextRequest) {
       return payment; // Retornar o pagamento criado
     });
     
+    // Enviar notificação para o funcionário
+    try {
+      await prisma.notification.create({
+        data: {
+          title: 'Novo pagamento registrado',
+          message: `Um pagamento de R$ ${totalAmount.toFixed(2)} foi registrado para você por ${auth.name || 'Admin/Manager'}.`,
+          type: 'success',
+          userId: paymentData.userId,
+          relatedId: newPayment.id,
+          relatedType: 'payment',
+        }
+      });
+    } catch (notificationError) {
+      console.error('Erro ao criar notificação de pagamento mobile:', notificationError);
+    }
+    
+    // Buscar o pagamento completo para retornar
+    const completePayment = await prisma.payment.findUnique({
+      where: { id: newPayment.id },
+      include: {
+        user: { select: { id: true, name: true } },
+        creator: { select: { id: true, name: true } },
+        timeEntries: { include: { timeEntry: true } }
+      }
+    });
+    
+    // Verificar se o pagamento foi encontrado (embora improvável após criação)
+    if (!completePayment) {
+      console.error('Mobile - Falha ao buscar pagamento recém-criado:', newPayment.id);
+      return createCorsResponse({ error: 'Falha ao recuperar detalhes do pagamento criado.' }, 500);
+    }
+
     // Log de sucesso
     console.log('Mobile - Pagamento criado:', { 
       paymentId: newPayment.id,
@@ -282,24 +291,41 @@ export async function POST(req: NextRequest) {
       entriesIncluded: timeEntries.length
     });
     
-    // Retornar o pagamento criado (com cabeçalhos CORS)
-    // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
-    return applyCorsHeaders(req, NextResponse.json({ payment: newPayment }, { status: 201 }));
+    // Retornar o pagamento criado e formatado
+    const formattedPayment = {
+      id: completePayment.id,
+      amount: completePayment.amount,
+      date: format(completePayment.date, 'yyyy-MM-dd'),
+      description: completePayment.description,
+      reference: completePayment.reference,
+      paymentMethod: completePayment.paymentMethod,
+      status: completePayment.status,
+      periodStart: format(completePayment.periodStart, 'yyyy-MM-dd'),
+      periodEnd: format(completePayment.periodEnd, 'yyyy-MM-dd'),
+      user: completePayment.user,
+      creator: completePayment.creator,
+      timeEntries: completePayment.timeEntries.map(pte => ({
+        id: pte.timeEntry.id,
+        date: format(pte.timeEntry.date, 'yyyy-MM-dd'),
+        totalHours: pte.timeEntry.totalHours,
+        amount: pte.amount
+      }))
+    };
+
+    return createCorsResponse({ payment: formattedPayment }, 201);
 
   } catch (error) {
-    console.error('Erro ao criar pagamento:', error);
-    // Remover createCorsResponse e usar NextResponse com applyCorsHeaders
-    return applyCorsHeaders(req, NextResponse.json({ error: 'Erro interno ao criar pagamento' }, { status: 500 }));
+    console.error('Erro ao criar pagamento mobile:', error);
+    // Tratar erros específicos do Prisma (ex: unique constraint)
+    const typedError = error as any; // Tipar para acessar 'code'
+    if (typedError?.code === 'P2002') { // Verificar se code existe
+       return createCorsResponse({ error: 'Erro: Um dos registros de horas já está em outro pagamento.' }, 409);
+    }
+    return createCorsResponse({ error: 'Erro interno ao criar pagamento' }, 500);
   }
 }
 
-// Adicionar handler OPTIONS explícito para garantir que o preflight funcione
-// mesmo que outras funções não sejam chamadas.
-export async function OPTIONS(request: NextRequest) {
-  const preflightResponse = handleCorsPreflight(request);
-  if (preflightResponse) {
-    return preflightResponse;
-  }
-  // Fallback para uma resposta OK simples se não for um preflight válido (improvável)
-  return new NextResponse(null, { status: 204 });
+// OPTIONS Handler (atualizado para incluir POST)
+export async function OPTIONS(req: Request) {
+  return createCorsResponse({});
 } 
