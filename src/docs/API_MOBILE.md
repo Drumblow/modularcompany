@@ -1435,9 +1435,71 @@ Authorization: Bearer ... (Token de Admin ou Manager)
 - **400 Bad Request:** Usuário autenticado não está associado a uma empresa.
 - **500 Internal Server Error:** Erro inesperado no servidor.
 
-#### Listar Pagamentos da Empresa
+#### Criar Novo Usuário (Admin/Manager)
 
-**Endpoint:** `/mobile-admin/payments`
+**Endpoint:** `/mobile-admin/users`
+
+**Método:** `POST`
+
+**Headers:**
+```
+Authorization: Bearer ... (Token de Admin ou Manager)
+```
+
+**Descrição:** Permite que um **Administrador** ou **Gerente** crie um novo usuário (Funcionário ou outro Gerente) em sua empresa.
+
+**Body:**
+```json
+{
+  "name": "Nome do Novo Usuário",
+  "email": "novousuario@empresa.com",
+  "password": "senhaSegura123",
+  "role": "EMPLOYEE", // ou "MANAGER"
+  "hourlyRate": 55.0, // Opcional, aplicável se role="EMPLOYEE"
+  "phone": "(11) 98765-4321", // Opcional
+  "address": "Rua das Palmeiras, 123", // Opcional
+  "city": "Cidade Exemplo", // Opcional
+  "state": "SP", // Opcional
+  "zipCode": "12345-678", // Opcional
+  "birthDate": "1990-07-15T00:00:00Z", // Opcional, formato ISO 8601
+  "managerId": "uuid-do-gerente-responsavel" // Opcional, aplicável se role="EMPLOYEE" e houver um gerente
+}
+```
+
+**Resposta de Sucesso (201):**
+```json
+{
+  "user": {
+    "id": "uuid-novo-usuario",
+    "name": "Nome do Novo Usuário",
+    "email": "novousuario@empresa.com",
+    "role": "EMPLOYEE",
+    "companyId": "uuid-da-empresa-do-admin",
+    "hourlyRate": 55.0,
+    "phone": "(11) 98765-4321",
+    "address": "Rua das Palmeiras, 123",
+    "city": "Cidade Exemplo",
+    "state": "SP",
+    "zipCode": "12345-678",
+    "birthDate": "1990-07-15T00:00:00.000Z",
+    "managerId": "uuid-do-gerente-responsavel",
+    "createdAt": "2023-10-27T10:00:00.000Z"
+  }
+}
+```
+
+**Respostas de Erro:**
+- **400 Bad Request:** Dados inválidos (ver `details` na resposta).
+- **401 Unauthorized:** Token inválido ou expirado.
+- **403 Forbidden:** Usuário autenticado não é Admin/Manager.
+- **409 Conflict:** Email já está em uso.
+- **500 Internal Server Error:** Erro inesperado.
+
+---
+
+#### Visualizar Usuário Específico (Admin/Manager)
+
+**Endpoint:** `/mobile-admin/users/[userId]`
 
 **Método:** `GET`
 
@@ -1446,67 +1508,130 @@ Authorization: Bearer ... (Token de Admin ou Manager)
 Authorization: Bearer ... (Token de Admin ou Manager)
 ```
 
-**Descrição:** Retorna uma lista paginada de pagamentos **criados para os usuários** da empresa do Admin/Manager autenticado. Este endpoint é ideal para exibir as abas "Pendentes" e "Concluídos" no aplicativo.
-
-**Query Parameters (opcionais):**
-- `status`: Filtrar por status. Pode ser um único status (`pending`, `completed`, etc.) ou múltiplos status separados por vírgula (`pending,awaiting_confirmation`).
-- `userId`: Filtrar pagamentos destinados a um funcionário específico.
-- `startDate`: Filtrar pagamentos a partir desta data (formato YYYY-MM-DD).
-- `endDate`: Filtrar pagamentos até esta data (formato YYYY-MM-DD).
-- `page`: Número da página para paginação (padrão: 1).
-- `limit`: Pagamentos por página (padrão: 50).
-- `sortBy`: Campo para ordenação (`date`, `amount`, `status`, padrão: `date`).
-- `sortOrder`: Direção da ordenação (`asc`, `desc`, padrão: `desc`).
+**Descrição:** Retorna detalhes de um usuário específico pertencente à empresa do Admin/Manager.
 
 **Resposta de Sucesso (200):**
 ```json
 {
-  "payments": [
-    {
-      "id": "uuid-pagamento-1",
-      "amount": 123.45,
-      "date": "2025-04-30",
-      "description": "Pagamento criado via teste",
-      "reference": "Teste Pagamento Mobile 1746035545288",
-      "paymentMethod": "pix",
-      "status": "completed",
-      "confirmedAt": "2025-04-30T13:52:28",
-      "periodStart": "2025-04-29",
-      "periodEnd": "2025-04-30",
-      "user": {
-        "id": "uuid-funcionario",
-        "name": "Funcionário Mobile Teste",
-        "email": "funcionario_mobile_test@teste.com"
-      },
-      "creator": {
-        "id": "uuid-admin",
-        "name": "Admin Mobile Teste"
-      }
-    }
-    // ... outros pagamentos
-  ],
-  "pagination": {
-    "total": 5,
-    "page": 1,
-    "limit": 50,
-    "pages": 1
-  },
-  "appliedFilters": {
-    "status": "completed",
-    "userId": null,
-    "startDate": null,
-    "endDate": null,
-    "sortBy": "date",
-    "sortOrder": "desc"
+  "user": {
+    "id": "uuid-do-usuario-alvo",
+    "name": "Nome do Usuário Alvo",
+    "email": "usuarioalvo@empresa.com",
+    "role": "EMPLOYEE",
+    "companyId": "uuid-da-empresa-do-admin",
+    "hourlyRate": 50.0,
+    "phone": "(11) 12345-6789",
+    "address": "Rua Exemplo, 456",
+    "city": "Outra Cidade",
+    "state": "RJ",
+    "zipCode": "23456-789",
+    "birthDate": "1985-03-20T00:00:00.000Z",
+    "managerId": null,
+    // "active": true, // Adicionar se o campo 'active' for implementado e selecionado na API
+    "createdAt": "2023-01-10T09:00:00.000Z",
+    "updatedAt": "2023-05-15T14:30:00.000Z"
   }
 }
 ```
 
 **Respostas de Erro:**
-- **400 Bad Request:** Parâmetros inválidos (ex: formato de data incorreto).
 - **401 Unauthorized:** Token inválido ou expirado.
-- **403 Forbidden:** Usuário não tem permissão (não é Admin/Manager).
-- **500 Internal Server Error:** Erro inesperado no servidor.
+- **403 Forbidden:** Usuário autenticado não é Admin/Manager.
+- **404 Not Found:** Usuário com o `userId` fornecido não encontrado ou não pertence à empresa.
+- **500 Internal Server Error:** Erro inesperado.
+
+---
+
+#### Atualizar Usuário (Admin/Manager)
+
+**Endpoint:** `/mobile-admin/users/[userId]`
+
+**Método:** `PUT`
+
+**Headers:**
+```
+Authorization: Bearer ... (Token de Admin ou Manager)
+```
+
+**Descrição:** Permite que um **Administrador** ou **Gerente** atualize os dados de um usuário em sua empresa. Email e senha não são atualizáveis por esta rota.
+
+**Body (apenas campos a serem atualizados):**
+```json
+{
+  "name": "Nome Atualizado do Usuário",
+  "role": "MANAGER", 
+  "hourlyRate": null, 
+  "phone": "(11) 99999-8888",
+  "address": "Nova Rua, 789",
+  "city": "Cidade Atualizada",
+  "state": "MG",
+  "zipCode": "34567-890",
+  "birthDate": "1992-11-25T00:00:00Z",
+  "managerId": null, // Ex: se tornou MANAGER
+  "active": true // Ex: para reativar um usuário (requer campo 'active' no schema e na API)
+}
+```
+
+**Resposta de Sucesso (200):**
+```json
+{
+  "user": {
+    "id": "uuid-do-usuario-alvo",
+    "name": "Nome Atualizado do Usuário",
+    "email": "usuarioalvo@empresa.com", 
+    "role": "MANAGER",
+    "hourlyRate": null,
+    "phone": "(11) 99999-8888",
+    "address": "Nova Rua, 789",
+    "city": "Cidade Atualizada",
+    "state": "MG",
+    "zipCode": "34567-890",
+    "birthDate": "1992-11-25T00:00:00.000Z",
+    "managerId": null
+    // "active": true 
+  }
+}
+```
+
+**Respostas de Erro:**
+- **400 Bad Request:** Dados inválidos.
+- **401 Unauthorized:** Token inválido ou expirado.
+- **403 Forbidden:** Usuário autenticado não é Admin/Manager.
+- **404 Not Found:** Usuário com o `userId` fornecido não encontrado ou não pertence à empresa.
+- **500 Internal Server Error:** Erro inesperado.
+
+---
+
+#### Excluir/Desativar Usuário (Admin/Manager)
+
+**Endpoint:** `/mobile-admin/users/[userId]`
+
+**Método:** `DELETE`
+
+**Headers:**
+```
+Authorization: Bearer ... (Token de Admin ou Manager)
+```
+
+**Descrição:** Permite que um **Administrador** ou **Gerente** exclua (ou desative, dependendo da implementação na API) um usuário de sua empresa. Um usuário não pode se auto-excluir/desativar por esta rota.
+
+**Resposta de Sucesso (200):**
+```json
+{
+  "message": "Usuário excluído com sucesso." 
+}
+// Ou, se implementada desativação na API:
+// {
+//   "user": { "id": "uuid-usuario-desativado", "active": false, ... },
+//   "message": "Usuário desativado com sucesso."
+// }
+```
+
+**Respostas de Erro:**
+- **401 Unauthorized:** Token inválido ou expirado.
+- **403 Forbidden:** Usuário autenticado não é Admin/Manager, ou tentativa de auto-exclusão.
+- **404 Not Found:** Usuário com o `userId` fornecido não encontrado ou não pertence à empresa.
+- **500 Internal Server Error:** Erro inesperado.
 
 ## Implementação no React Native
 
