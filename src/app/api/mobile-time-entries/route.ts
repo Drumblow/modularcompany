@@ -28,6 +28,9 @@ export async function GET(req: NextRequest) {
   const maxHoursParam = searchParams.get('maxHours');
   const unpaidParam = searchParams.get('unpaid');
   const userIdParam = searchParams.get('userId');
+  // Novo parâmetro para incluir registros próprios do manager
+  const includeOwnEntriesParam = searchParams.get('includeOwnEntries');
+  const includeOwnEntries = includeOwnEntriesParam === 'true';
   
   // Parâmetros de paginação e ordenação
   const page = parseInt(searchParams.get('page') || '1');
@@ -184,14 +187,50 @@ export async function GET(req: NextRequest) {
           console.log(`Mobile - ${auth.role}: Usuário solicitado (${userIdParam}) não pertence à empresa`);
         }
       } else {
-        // Filtrar por todos os usuários da empresa
-        where = {
-          ...baseFilter,
-          userId: {
-            in: userIds
+        // Verificar se é um manager e se deseja incluir seus próprios registros
+        if (auth.role === 'MANAGER' && includeOwnEntries) {
+          // Se for ver apenas os seus próprios registros (Minhas Horas)
+          if (includeOwnEntries && userIdParam === auth.id) {
+            where = {
+              ...baseFilter,
+              userId: auth.id
+            };
+            console.log(`Mobile - MANAGER: Filtrando apenas pelos próprios registros do manager ${auth.id}`);
+          } 
+          // Se for ver todos os registros incluindo os seus próprios
+          else {
+            where = {
+              ...baseFilter,
+              userId: {
+                in: userIds
+              }
+            };
+            console.log(`Mobile - MANAGER: Filtrando por ${userIds.length} usuários da mesma empresa (incluindo o próprio manager)`);
           }
-        };
-        console.log(`Mobile - ${auth.role}: Filtrando por ${userIds.length} usuários da mesma empresa`);
+        } else {
+          // Comportamento original - filtrar por todos os usuários da empresa para Admin
+          // ou apenas subordinados para Manager (sem incluir os próprios registros)
+          if (auth.role === 'MANAGER') {
+            // Para manager, excluir seu próprio ID da lista de usuários
+            const filteredUserIds = userIds.filter(id => id !== auth.id);
+            where = {
+              ...baseFilter,
+              userId: {
+                in: filteredUserIds
+              }
+            };
+            console.log(`Mobile - MANAGER: Filtrando por ${filteredUserIds.length} usuários subordinados (excluindo o próprio manager)`);
+          } else {
+            // Para admin, incluir todos os usuários da empresa
+            where = {
+              ...baseFilter,
+              userId: {
+                in: userIds
+              }
+            };
+            console.log(`Mobile - ADMIN: Filtrando por ${userIds.length} usuários da mesma empresa`);
+          }
+        }
       }
     } 
     else {

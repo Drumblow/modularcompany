@@ -18,6 +18,12 @@ const EMPLOYEE_USER = {
   password: 'senha123'
 };
 
+// Credenciais para manager (usando as credenciais reais agora)
+const MANAGER_USER = {
+  email: 'manager_mobile_test@teste.com',
+  password: 'senha123'
+};
+
 // Função para dormir
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -290,6 +296,7 @@ async function testarAprovacaoHorasAdmin() {
         console.log('📄 Resposta:', rejectResponse.data);
       } catch (error) {
         console.log('❌ ERRO: Falha ao rejeitar registro', error.message);
+        console.log('⚠️ PROBLEMA IDENTIFICADO: Endpoint /mobile-time-entries/{id}/approve pode não existir');
         
         if (error.response) {
           console.log('Status:', error.response.status);
@@ -298,39 +305,159 @@ async function testarAprovacaoHorasAdmin() {
       }
     }
 
-    // Limpar registros criados
-    console.log('\n🧹 Limpando registros de teste...');
-    
-    if (registro1) {
-      try {
-        await axios.delete(
-          `${BASE_URL}/mobile-time-entries/${registro1.id}`, 
-          { headers: { Authorization: `Bearer ${employeeToken}` } }
-        );
-        console.log(`✅ Registro 1 excluído`);
-      } catch (error) {
-        console.log(`⚠️ Não foi possível excluir o registro 1: ${error.message}`);
-      }
-    }
-    
-    if (registro2) {
-      try {
-        await axios.delete(
-          `${BASE_URL}/mobile-time-entries/${registro2.id}`, 
-          { headers: { Authorization: `Bearer ${employeeToken}` } }
-        );
-        console.log(`✅ Registro 2 excluído`);
-      } catch (error) {
-        console.log(`⚠️ Não foi possível excluir o registro 2: ${error.message}`);
-      }
-    }
-
-    console.log('\n✅ Teste concluído!');
-    
   } catch (error) {
-    console.error('❌ Erro no teste:', error);
+    console.log('❌ ERRO: Falha ao executar o teste:', error.message);
+    if (error.response) {
+      console.log('Resposta:', error.response.data);
+    }
   }
 }
 
-// Executar o teste
-testarAprovacaoHorasAdmin().catch(console.error); 
+testarAprovacaoHorasAdmin();
+
+// TESTE PARA A FUNCIONALIDADE includeOwnEntries
+async function testManagerOwnTimeEntries(managerToken, managerUser) {
+  console.log('\n🔍 Testando: Manager visualizando seus próprios registros de horas (GET /mobile-time-entries?includeOwnEntries=true)');
+  if (!managerToken || !managerUser) {
+    console.log('⚠️ Manager não autenticado. Pulando teste.');
+    return;
+  }
+
+  const dataFormatada = getTodayFormatted();
+  console.log(`📅 Data do teste para manager: ${dataFormatada}`);
+  
+  // Criar um registro de horas para o manager testar
+  try {
+    console.log('\n⏱️ Criando um registro de horas para o manager...');
+    const dadosRegistroManager = {
+      date: dataFormatada,
+      startTime: `${dataFormatada}T10:00:00`,
+      endTime: `${dataFormatada}T11:30:00`,
+      observation: `Registro do manager (teste) ${Date.now()}`,
+      project: 'Projeto Teste Manager'
+    };
+    
+    console.log('Enviando dados para criar registro do manager:', dadosRegistroManager);
+    
+    const responseManagerEntry = await axios.post(
+      `${BASE_URL}/mobile-time-entries`, 
+      dadosRegistroManager, 
+      { headers: { Authorization: `Bearer ${managerToken}` } }
+    );
+    
+    const registroManager = responseManagerEntry.data.timeEntry;
+    console.log(`✅ Registro do manager criado com ID: ${registroManager.id}`);
+    
+    // Aguardar um momento para o registro ser processado
+    console.log('\n⏳ Aguardando 2 segundos para o registro ser processado...');
+    await sleep(RETRY_DELAY);
+
+    // Teste 1: Buscar apenas os próprios registros (Minhas Horas)
+    console.log('\n🔍 Teste 1: Buscar apenas os próprios registros do manager');
+    const ownEntriesResponse = await axios.get(
+      `${BASE_URL}/mobile-time-entries?includeOwnEntries=true&userId=${managerUser.id}`,
+      { headers: { Authorization: `Bearer ${managerToken}` } }
+    );
+
+    // Verificar se retornou registros e se todos pertencem ao manager
+    const ownEntries = ownEntriesResponse.data.timeEntries || [];
+    if (ownEntries.length > 0) {
+      const allBelongToManager = ownEntries.every(entry => entry.user?.id === managerUser.id);
+      if (allBelongToManager) {
+        console.log(`✅ Manager conseguiu visualizar ${ownEntries.length} registro(s) próprio(s) com sucesso.`);
+      } else {
+        console.error('❌ Alguns registros retornados não pertencem ao manager.');
+      }
+    } else {
+      console.log('ℹ️ Nenhum registro próprio encontrado para o manager.');
+    }
+
+    // Teste 2: Buscar todos os registros incluindo os próprios
+    console.log('\n🔍 Teste 2: Buscar todos os registros incluindo os próprios');
+    const allEntriesResponse = await axios.get(
+      `${BASE_URL}/mobile-time-entries?includeOwnEntries=true`,
+      { headers: { Authorization: `Bearer ${managerToken}` } }
+    );
+
+    // Verificar se retornou registros e se existem registros do manager
+    const allEntries = allEntriesResponse.data.timeEntries || [];
+    if (allEntries.length > 0) {
+      const hasManagerEntries = allEntries.some(entry => entry.user?.id === managerUser.id);
+      if (hasManagerEntries) {
+        console.log(`✅ Manager conseguiu visualizar registros de equipe (${allEntries.length} total) incluindo os próprios.`);
+      } else {
+        console.log('ℹ️ Manager visualizou registros da equipe, mas não possui registros próprios.');
+      }
+    } else {
+      console.log('ℹ️ Nenhum registro encontrado para a equipe do manager.');
+    }
+
+    // Teste 3: Tentativa de aprovação de registro próprio (deve falhar)
+    console.log('\n🔍 Teste 3: Tentar aprovar o próprio registro (deve falhar)');
+    if (registroManager && registroManager.id) {
+      try {
+        await axios.put(
+          `${BASE_URL}/mobile-time-entries/${registroManager.id}/approve`,
+          { approved: true },
+          { headers: { Authorization: `Bearer ${managerToken}` } }
+        );
+        console.error('❌ Manager conseguiu aprovar seu próprio registro, o que não deveria ser permitido.');
+      } catch (approvalError) {
+        if (approvalError.response && approvalError.response.status === 403) {
+          console.log('✅ Corretamente impedido de aprovar seu próprio registro de horas.');
+          console.log('📄 Resposta:', approvalError.response.data);
+        } else {
+          console.error('❌ Erro inesperado ao tentar aprovar registro próprio:', 
+            approvalError.response ? approvalError.response.data : approvalError.message);
+        }
+      }
+    } else {
+      console.log('ℹ️ Sem registros próprios para testar a restrição de auto-aprovação.');
+    }
+
+    // Limpeza - tentar excluir o registro criado
+    console.log('\n🧹 Limpando registro de teste do manager...');
+    try {
+      await axios.delete(
+        `${BASE_URL}/mobile-time-entries/${registroManager.id}`, 
+        { headers: { Authorization: `Bearer ${managerToken}` } }
+      );
+      console.log(`✅ Registro do manager excluído`);
+    } catch (error) {
+      console.log(`⚠️ Não foi possível excluir o registro do manager: ${error.message}`);
+    }
+
+  } catch (error) {
+    console.error('❌ ERRO ao testar visualização de registros próprios:', 
+      error.response ? error.response.data : error.message);
+  }
+}
+
+// Função para teste do manager
+async function testarFuncionalidadesManager() {
+  console.log('\n🚀 Iniciando teste de visualização de horas próprias por Manager');
+  
+  try {
+    // Login como manager (usando as credenciais reais do manager)
+    console.log('\n👤 Autenticando como manager...');
+    const responseManager = await axios.post(`${BASE_URL}/mobile-auth`, MANAGER_USER);
+    const managerToken = responseManager.data.token;
+    const managerUser = responseManager.data.user;
+    
+    console.log(`✅ Manager autenticado: ${managerUser.name} (${managerUser.role})`);
+    console.log(`📌 Manager companyId: ${managerUser.companyId}`);
+    
+    // Agora chame a função de teste passando token e user como parâmetros
+    await testManagerOwnTimeEntries(managerToken, managerUser);
+    
+    console.log('\n✅ Teste de manager concluído!');
+  } catch (error) {
+    console.log('❌ Falha ao autenticar como manager:', error.message);
+    if (error.response) {
+      console.log('Resposta:', error.response.data);
+    }
+  }
+}
+
+// Executar o teste do manager após o teste do admin
+testarFuncionalidadesManager().catch(error => console.error('Erro no teste de Manager:', error));

@@ -70,6 +70,13 @@ export async function PUT(
       }, 403);
     }
     
+    // Impedir que managers aprovem seus próprios registros de horas
+    if (auth.role === 'MANAGER' && timeEntry.userId === auth.id) {
+      return createCorsResponse({ 
+        error: 'Managers não podem aprovar ou rejeitar seus próprios registros de horas. Solicite a um administrador.'
+      }, 403);
+    }
+    
     // Preparar dados para atualização
     const updateData: any = {};
     

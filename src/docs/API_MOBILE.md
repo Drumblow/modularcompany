@@ -113,6 +113,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 - `minHours`: Filtrar por horas mínimas
 - `maxHours`: Filtrar por horas máximas
 - `unpaid`: Filtrar apenas registros não pagos (true/false)
+- `includeOwnEntries`: Habilitar managers a verem seus próprios registros (true/false)
 - `page`: Número da página (padrão: 1)
 - `limit`: Registros por página (padrão: 50)
 - `sortBy`: Campo para ordenação (date, hours, createdAt)
@@ -135,6 +136,9 @@ Se não especificado, retorna registros do mês atual.
   - Pode ver registros de todos os usuários da mesma empresa
   - Pode filtrar por userId específico (desde que o usuário pertença à mesma empresa)
   - Não pode ver registros de outras empresas
+  - Por padrão, não vê seus próprios registros (apenas dos subordinados)
+  - **NOVO**: Pode ver seus próprios registros usando o parâmetro `includeOwnEntries=true`
+  - **NOVO**: Pode ver apenas seus próprios registros usando `includeOwnEntries=true&userId={seu-id}`
 
 - **EMPLOYEE**: Acesso restrito aos próprios registros
   - Pode ver apenas seus próprios registros
@@ -213,7 +217,17 @@ GET /mobile-time-entries?userId=123456
 GET /mobile-time-entries?startDate=2023-05-01&endDate=2023-05-31&approved=true
 ```
 
-4. **EMPLOYEE** - Visualizar seus próprios registros pendentes:
+4. **MANAGER** - Visualizar seus próprios registros (Minhas Horas):
+```
+GET /mobile-time-entries?includeOwnEntries=true&userId={manager-id}
+```
+
+5. **MANAGER** - Visualizar registros da equipe incluindo os próprios:
+```
+GET /mobile-time-entries?includeOwnEntries=true
+```
+
+6. **EMPLOYEE** - Visualizar seus próprios registros pendentes:
 ```
 GET /mobile-time-entries?approved=null&rejected=null
 ```
@@ -222,6 +236,7 @@ GET /mobile-time-entries?approved=null&rejected=null
 - Para ADMIN e MANAGER, se nenhum userId for especificado, serão retornados todos os registros de usuários da mesma empresa
 - Para EMPLOYEE, o parâmetro userId é ignorado, pois só podem ver seus próprios registros
 - O parâmetro unpaid=true filtra apenas registros que não foram associados a pagamentos
+- **NOVO**: O parâmetro includeOwnEntries permite que managers vejam seus próprios registros, útil para a aba "Minhas Horas"
 
 #### Criar Registro
 
@@ -401,6 +416,11 @@ Authorization: Bearer ... (Token de Admin ou Manager)
 
 **Descrição:** Permite que um **Administrador** ou **Gerente** aprove ou rejeite um registro de horas específico de um funcionário da sua empresa.
 
+**Restrições:**
+- **NOVO**: Managers não podem aprovar seus próprios registros de horas
+- Apenas administradores podem aprovar horas registradas por managers
+- Apenas usuários com permissões Admin ou Manager podem usar este endpoint
+
 **Body (para aprovar):**
 ```json
 {
@@ -430,7 +450,7 @@ Authorization: Bearer ... (Token de Admin ou Manager)
 **Respostas de Erro:**
 - **400 Bad Request:** Dados inválidos (ex: `approved` não é booleano, `rejectionReason` faltando ao rejeitar).
 - **401 Unauthorized:** Token inválido ou expirado.
-- **403 Forbidden:** Usuário não tem permissão (não é Admin/Manager) ou o registro não pertence à sua empresa.
+- **403 Forbidden:** Usuário não tem permissão (não é Admin/Manager), o registro não pertence à sua empresa, ou **o manager está tentando aprovar seu próprio registro**.
 - **404 Not Found:** Registro de horas com o ID fornecido não encontrado.
 - **500 Internal Server Error:** Erro inesperado no servidor.
 
