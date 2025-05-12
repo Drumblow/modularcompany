@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { verifyMobileAuth, createCorsResponse } from '@/lib/mobile-auth';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 export async function GET(req: NextRequest) {
   // Verificar autenticação e permissões (Admin/Manager)
@@ -19,6 +20,10 @@ export async function GET(req: NextRequest) {
   }
   
   try {
+    const today = new Date();
+    const currentMonthStart = startOfMonth(today);
+    const currentMonthEnd = endOfMonth(today);
+    
     // 1. Contar registros pendentes de aprovação na empresa
     const pendingApprovalCount = await prisma.timeEntry.count({
       where: {
@@ -30,8 +35,7 @@ export async function GET(req: NextRequest) {
       },
     });
     
-    // 2. Contar usuários totais na empresa (considerando ativos se o campo existir, senão todos)
-    // Assumindo que não há campo 'active' explícito por enquanto, contamos todos.
+    // 2. Contar usuários totais na empresa
     const totalUserCount = await prisma.user.count({
       where: {
         companyId: auth.companyId,
@@ -58,6 +62,49 @@ export async function GET(req: NextRequest) {
       }
     }
     
+    // 5. Calcular informações financeiras de pagamentos da empresa no mês atual
+    // 5.1. Contagem de Pagamentos Pendentes na empresa (status 'pending' ou 'awaiting_confirmation')
+    const pendingPaymentCount = await prisma.payment.count({
+      where: {
+        user: { companyId: auth.companyId },
+        status: { in: ['pending', 'awaiting_confirmation'] },
+        // Adicionar filtro de data se quisermos apenas pendentes CRIADOS no mês atual
+        // date: {
+        //   gte: currentMonthStart,
+        //   lte: currentMonthEnd,
+        // },
+      },
+    });
+    
+    // 5.2. Valor Total Pago no Mês Atual (status 'completed')
+    const paymentsCompletedMonth = await prisma.payment.findMany({
+      where: {
+        user: { companyId: auth.companyId },
+        status: 'completed',
+        date: { // Pagamentos realizados no mês atual
+          gte: currentMonthStart,
+          lte: currentMonthEnd,
+        },
+      },
+      select: { amount: true },
+    });
+    const totalPaidAmountMonth = paymentsCompletedMonth.reduce((sum, p) => sum + p.amount, 0);
+    
+    // 5.3. Valor Total Pendente de Pagamento no Mês Atual (status 'pending' ou 'awaiting_confirmation')
+    // Consideraremos pagamentos com data DENTRO do mês atual que estão pendentes
+    const paymentsPendingMonth = await prisma.payment.findMany({
+      where: {
+        user: { companyId: auth.companyId },
+        status: { in: ['pending', 'awaiting_confirmation'] },
+        date: { // Pagamentos que deveriam ter sido pagos ou serão pagos no mês atual
+          gte: currentMonthStart,
+          lte: currentMonthEnd,
+        },
+      },
+      select: { amount: true },
+    });
+    const pendingPaymentAmountMonth = paymentsPendingMonth.reduce((sum, p) => sum + p.amount, 0);
+    
     // Log de sucesso
     console.log(`Mobile - Admin/Manager ${auth.id} acessou dashboard summary da empresa ${auth.companyId}`);
     
@@ -67,6 +114,10 @@ export async function GET(req: NextRequest) {
         pendingApprovalCount,
         totalUserCount,
         unreadNotificationCount,
+        // Novas informações financeiras
+        pendingPaymentCount,
+        totalPaidAmountMonth,
+        pendingPaymentAmountMonth,
       },
       user: { // Informações do Admin/Manager logado
         id: auth.id,
