@@ -2396,3 +2396,52 @@ Authorization: Bearer ... (Token de Admin ou Manager)
 ## Implementação no React Native
 // ... existing code ...
 }
+```
+
+### Resumo do Dashboard (Manager)
+
+**Endpoint:** `/api/mobile-manager/dashboard-summary`
+
+**Método:** `GET`
+
+**Headers:**
+```
+Authorization: Bearer ... (Token de Manager)
+```
+
+**Descrição:** Retorna um resumo de dados relevantes para o dashboard de um Manager, incluindo informações da equipe e suas próprias atividades/pagamentos.
+
+**Parâmetros de Consulta:** Nenhum.
+
+**Resposta de Sucesso (200):**
+```json
+{
+  "summary": {
+    "pendingApprovalCount": 15,           // Contagem de time entries da equipe pendentes de aprovação
+    "teamTotalHoursLast30Days": 325.5,   // Soma de horas aprovadas da equipe nos últimos 30 dias
+    "teamMemberCount": 8,                // Contagem de usuários que reportam a este manager
+    "myStatsLast30Days": {
+       "totalHoursRegistered": 42.0,      // Total de horas registradas pelo manager nos últimos 30 dias
+       "pendingPaymentHours": 10.5,      // Horas aprovadas e não pagas do manager nos últimos 30 dias
+       "pendingPaymentValue": 525.00     // Valor estimado das horas pendentes de pagamento do manager
+    },
+    "myPendingPaymentsTotalValue": 850.75, // Soma de pagamentos PENDENTES (status) para o manager (todos os tempos)
+    "myReceivedPaymentsLast30Days": 1850.00 // Soma de pagamentos COMPLETOS para o manager nos últimos 30 dias
+  },
+  "managerInfo": {
+     "id": "manager-id-123",
+     "name": "Nome do Manager",
+     "hourlyRate": 50.00
+  }
+}
+```
+
+**Respostas de Erro:**
+- **401 Unauthorized:** Token inválido ou expirado.
+- **403 Forbidden:** Usuário não é Manager ou não tem permissão.
+- **400 Bad Request:** Manager não associado a uma empresa.
+- **404 Not Found:** Dados do manager não encontrados.
+- **500 Internal Server Error:** Erro inesperado no servidor.
+
+--- 
+// ... (Restante da documentação) ...
