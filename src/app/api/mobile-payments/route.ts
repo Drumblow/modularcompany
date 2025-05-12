@@ -20,24 +20,26 @@ export async function GET(req: NextRequest) {
   let endDateParam = searchParams.get('endDate');
   let status = searchParams.get('status');
   
-  // Se não fornecidos, usar o mês atual
-  const today = new Date();
-  const defaultStartDate = startOfMonth(today);
-  const defaultEndDate = endOfMonth(today);
-  
-  // Analisar datas fornecidas ou usar padrões
-  let startDate = startDateParam ? parseISO(startDateParam) : defaultStartDate;
-  let endDate = endDateParam ? parseISO(endDateParam) : defaultEndDate;
+  // Analisar datas fornecidas
+  let startDate = startDateParam ? parseISO(startDateParam) : undefined;
+  let endDate = endDateParam ? parseISO(endDateParam) : undefined;
   
   try {
     // Construir filtro de consulta
     const where: any = {
-      userId: auth.id,
-      date: {
-        gte: startDate,
-        lte: endDate
-      }
+      userId: auth.id
     };
+    
+    // Adicionar filtro de datas apenas se fornecidas
+    if (startDate || endDate) {
+      where.date = {};
+      if (startDate) {
+        where.date.gte = startDate;
+      }
+      if (endDate) {
+        where.date.lte = endDate;
+      }
+    }
     
     // Filtrar por status se fornecido
     if (status) {
@@ -105,15 +107,15 @@ export async function GET(req: NextRequest) {
     console.log('Mobile - Pagamentos acessados:', { 
       userId: auth.id,
       count: payments.length,
-      period: `${format(startDate, 'yyyy-MM-dd')} até ${format(endDate, 'yyyy-MM-dd')}`
+      period: `${startDate ? format(startDate, 'yyyy-MM-dd') : 'sem data inicial'} até ${endDate ? format(endDate, 'yyyy-MM-dd') : 'sem data final'}`
     });
     
     // Retornar dados
     return createCorsResponse({ 
       payments: formattedPayments,
       period: {
-        startDate: format(startDate, 'yyyy-MM-dd'),
-        endDate: format(endDate, 'yyyy-MM-dd')
+        startDate: startDate ? format(startDate, 'yyyy-MM-dd') : 'sem data inicial',
+        endDate: endDate ? format(endDate, 'yyyy-MM-dd') : 'sem data final'
       }
     });
     

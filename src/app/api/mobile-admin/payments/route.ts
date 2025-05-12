@@ -54,12 +54,15 @@ export async function GET(req: NextRequest) {
         where.userId = userIdParam;
     }
     
-    // Adicionar filtro de datas (data do pagamento)
-    if (startDateParam) {
-        where.date = { ...(where.date || {}), gte: new Date(`${startDateParam}T00:00:00.000Z`) };
-    }
-    if (endDateParam) {
-        where.date = { ...(where.date || {}), lte: new Date(`${endDateParam}T23:59:59.999Z`) };
+    // Adicionar filtro de datas (data do pagamento) apenas se fornecidas
+    if (startDateParam || endDateParam) {
+        where.date = {};
+        if (startDateParam) {
+            where.date.gte = new Date(`${startDateParam}T00:00:00.000Z`);
+        }
+        if (endDateParam) {
+            where.date.lte = new Date(`${endDateParam}T23:59:59.999Z`);
+        }
     }
     
     // Definir ordenação

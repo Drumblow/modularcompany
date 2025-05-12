@@ -2238,3 +2238,113 @@ export default BalanceScreen;
 ## Suporte
 
 Para questões e problemas relacionados à API, entre em contato com a equipe de desenvolvimento do ModularCompany através do e-mail fabricappsdrumblow@gmail.com ou abra uma issue no repositório do projeto. 
+
+### Listar Pagamentos do Usuário
+
+**Endpoint:** `GET /api/mobile-payments`
+
+**Descrição:** Lista os pagamentos do usuário autenticado.
+
+**Parâmetros de Consulta:**
+- `startDate` (opcional): Data inicial no formato YYYY-MM-DD
+- `endDate` (opcional): Data final no formato YYYY-MM-DD
+- `status` (opcional): Filtrar por status específico (pending, awaiting_confirmation, completed, cancelled)
+
+**Resposta de Sucesso:**
+```json
+{
+  "payments": [
+    {
+      "id": "string",
+      "amount": "number",
+      "date": "YYYY-MM-DD",
+      "description": "string",
+      "reference": "string",
+      "paymentMethod": "string",
+      "status": "string",
+      "periodStart": "YYYY-MM-DD",
+      "periodEnd": "YYYY-MM-DD",
+      "totalHours": "number",
+      "createdBy": {
+        "id": "string",
+        "name": "string"
+      },
+      "timeEntries": [
+        {
+          "id": "string",
+          "date": "YYYY-MM-DD",
+          "totalHours": "number",
+          "observation": "string",
+          "project": "string",
+          "amount": "number"
+        }
+      ],
+      "createdAt": "YYYY-MM-DDTHH:mm:ss",
+      "updatedAt": "YYYY-MM-DDTHH:mm:ss"
+    }
+  ],
+  "period": {
+    "startDate": "YYYY-MM-DD ou 'sem data inicial'",
+    "endDate": "YYYY-MM-DD ou 'sem data final'"
+  }
+}
+```
+
+### Listar Pagamentos da Empresa (Admin/Manager)
+
+**Endpoint:** `GET /api/mobile-admin/payments`
+
+**Descrição:** Lista os pagamentos de todos os usuários da empresa (apenas para Admin/Manager).
+
+**Parâmetros de Consulta:**
+- `startDate` (opcional): Data inicial no formato YYYY-MM-DD
+- `endDate` (opcional): Data final no formato YYYY-MM-DD
+- `status` (opcional): Filtrar por status específico (pending, awaiting_confirmation, completed, cancelled)
+- `userId` (opcional): Filtrar por usuário específico
+- `page` (opcional): Número da página (padrão: 1)
+- `limit` (opcional): Itens por página (padrão: 50)
+- `sortBy` (opcional): Campo para ordenação (date, amount, status)
+- `sortOrder` (opcional): Ordem da ordenação (asc, desc)
+
+**Resposta de Sucesso:**
+```json
+{
+  "payments": [
+    {
+      "id": "string",
+      "amount": "number",
+      "date": "YYYY-MM-DD",
+      "description": "string",
+      "reference": "string",
+      "paymentMethod": "string",
+      "status": "string",
+      "confirmedAt": "YYYY-MM-DDTHH:mm:ss",
+      "periodStart": "YYYY-MM-DD",
+      "periodEnd": "YYYY-MM-DD",
+      "user": {
+        "id": "string",
+        "name": "string",
+        "email": "string"
+      },
+      "creator": {
+        "id": "string",
+        "name": "string"
+      }
+    }
+  ],
+  "pagination": {
+    "total": "number",
+    "page": "number",
+    "limit": "number",
+    "pages": "number"
+  },
+  "appliedFilters": {
+    "status": "string",
+    "userId": "string",
+    "startDate": "YYYY-MM-DD",
+    "endDate": "YYYY-MM-DD",
+    "sortBy": "string",
+    "sortOrder": "string"
+  }
+}
+```
