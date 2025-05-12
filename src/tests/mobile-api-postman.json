@@ -859,6 +859,63 @@
 				}
 			],
 			"description": "Endpoints relacionados aos relatórios"
+		},
+		{
+			"name": "10. Gerenciamento por Admin/Manager",
+			"item": [
+				{
+					"name": "Excluir Usuário",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token_admin}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-admin/users/{{userId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-admin",
+								"users",
+								"{{userId}}"
+							]
+						},
+						"description": "Permite que um Admin/Manager exclua/desative um usuário da empresa."
+					},
+					"response": []
+				},
+				{
+					"name": "Resumo do Dashboard Admin",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token_admin}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/mobile-admin/dashboard-summary",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mobile-admin",
+								"dashboard-summary"
+							]
+						},
+						"description": "Obtém o resumo de dados para o dashboard do Admin/Manager."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gerenciamento por Admin/Manager"
 		}
 	],
 	"event": [

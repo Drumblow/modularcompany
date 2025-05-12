@@ -24,11 +24,13 @@ export async function GET(req: NextRequest) {
     const currentMonthStart = startOfMonth(today);
     const currentMonthEnd = endOfMonth(today);
     
+    const companyId = auth.companyId;
+    
     // 1. Contar registros pendentes de aprovação na empresa
     const pendingApprovalCount = await prisma.timeEntry.count({
       where: {
         user: {
-          companyId: auth.companyId,
+          companyId: companyId,
         },
         approved: null, // Não aprovado
         rejected: null, // Não rejeitado
@@ -38,7 +40,7 @@ export async function GET(req: NextRequest) {
     // 2. Contar usuários totais na empresa
     const totalUserCount = await prisma.user.count({
       where: {
-        companyId: auth.companyId,
+        companyId: companyId,
       },
     });
     
@@ -52,21 +54,19 @@ export async function GET(req: NextRequest) {
     
     // 4. Buscar nome da empresa usando o companyId
     let companyName = 'Empresa não encontrada';
-    if (auth.companyId) {
-      const company = await prisma.company.findUnique({
-        where: { id: auth.companyId },
-        select: { name: true },
-      });
-      if (company) {
-        companyName = company.name;
-      }
+    const companyInfo = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { name: true },
+    });
+    if (companyInfo) {
+      companyName = companyInfo.name;
     }
     
     // 5. Calcular informações financeiras de pagamentos da empresa no mês atual
     // 5.1. Contagem de Pagamentos Pendentes na empresa (status 'pending' ou 'awaiting_confirmation')
     const pendingPaymentCount = await prisma.payment.count({
       where: {
-        user: { companyId: auth.companyId },
+        user: { companyId: companyId },
         status: { in: ['pending', 'awaiting_confirmation'] },
         // Adicionar filtro de data se quisermos apenas pendentes CRIADOS no mês atual
         // date: {
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
     // 5.2. Valor Total Pago no Mês Atual (status 'completed')
     const paymentsCompletedMonth = await prisma.payment.findMany({
       where: {
-        user: { companyId: auth.companyId },
+        user: { companyId: companyId },
         status: 'completed',
         date: { // Pagamentos realizados no mês atual
           gte: currentMonthStart,
@@ -90,23 +90,49 @@ export async function GET(req: NextRequest) {
     });
     const totalPaidAmountMonth = paymentsCompletedMonth.reduce((sum, p) => sum + p.amount, 0);
     
-    // 5.3. Valor Total Pendente de Pagamento no Mês Atual (status 'pending' ou 'awaiting_confirmation')
-    // Consideraremos pagamentos com data DENTRO do mês atual que estão pendentes
-    const paymentsPendingMonth = await prisma.payment.findMany({
-      where: {
-        user: { companyId: auth.companyId },
-        status: { in: ['pending', 'awaiting_confirmation'] },
-        date: { // Pagamentos que deveriam ter sido pagos ou serão pagos no mês atual
-          gte: currentMonthStart,
-          lte: currentMonthEnd,
+    // 5.3. Valor Total de Horas Aprovadas AINDA NÃO PAGAS no mês atual
+    // Primeiro, buscar todas as time entries aprovadas da empresa no período
+    const approvedTimeEntriesInMonth = await prisma.timeEntry.findMany({
+        where: {
+            user: { companyId },
+            approved: true,
+            date: { 
+                gte: currentMonthStart,
+                lte: currentMonthEnd,
+            },
         },
-      },
-      select: { amount: true },
+        include: {
+            user: { select: { hourlyRate: true, id: true } }, // Incluir ID do usuário para referência
+        },
     });
-    const pendingPaymentAmountMonth = paymentsPendingMonth.reduce((sum, p) => sum + p.amount, 0);
-    
+
+    // Segundo, buscar os IDs de todas as time entries que JÁ foram pagas (estão em PaymentTimeEntry)
+    const paidTimeEntryLinks = await prisma.paymentTimeEntry.findMany({
+        where: {
+            payment: { 
+                user: { companyId } // Garante que são pagamentos da mesma empresa
+            },
+            // Poderia adicionar um filtro para timeEntryId in approvedTimeEntriesInMonth.map(te => te.id) se a lista não for muito grande
+        },
+        select: { timeEntryId: true },
+    });
+    const paidTimeEntryIds = new Set(paidTimeEntryLinks.map(link => link.timeEntryId));
+
+    // Terceiro, filtrar as time entries aprovadas para encontrar as que não foram pagas
+    let pendingPaymentAmountMonth = 0;
+    const actuallyUnpaidEntries = []; // Para debug, se necessário
+
+    for (const entry of approvedTimeEntriesInMonth) {
+        if (!paidTimeEntryIds.has(entry.id)) {
+            const rate = entry.user.hourlyRate || 0;
+            pendingPaymentAmountMonth += entry.totalHours * rate;
+            actuallyUnpaidEntries.push({id: entry.id, hours: entry.totalHours, rate, user: entry.user.id});
+        }
+    }
+    // console.log('Horas aprovadas não pagas este mês:', actuallyUnpaidEntries);
+
     // Log de sucesso
-    console.log(`Mobile - Admin/Manager ${auth.id} acessou dashboard summary da empresa ${auth.companyId}`);
+    console.log(`Mobile - Admin/Manager ${auth.id} acessou dashboard summary da empresa ${companyId}`);
     
     // Montar resposta
     const summaryData = {
@@ -114,18 +140,17 @@ export async function GET(req: NextRequest) {
         pendingApprovalCount,
         totalUserCount,
         unreadNotificationCount,
-        // Novas informações financeiras
         pendingPaymentCount,
         totalPaidAmountMonth,
         pendingPaymentAmountMonth,
       },
       user: { // Informações do Admin/Manager logado
         id: auth.id,
-        name: auth.name,
+        name: auth.name || 'Nome não disponível',
         role: auth.role,
       },
       company: { // Informações da empresa
-        id: auth.companyId,
+        id: companyId,
         name: companyName,
       },
     };

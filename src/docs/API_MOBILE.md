@@ -2369,7 +2369,7 @@ Authorization: Bearer ... (Token de Admin ou Manager)
       "unreadNotificationCount": 3, // Número de notificações não lidas PARA o admin/manager logado
       "pendingPaymentCount": 5,   // Número total de pagamentos pendentes na empresa
       "totalPaidAmountMonth": 12500.75, // Valor total pago no mês atual
-      "pendingPaymentAmountMonth": 2800.50 // Valor total pendente com data no mês atual
+      "pendingPaymentAmountMonth": 2800.50 // Valor total estimado de horas aprovadas e não pagas trabalhadas no mês atual
     },
     "user": { 
       "id": "uuid-do-admin",
