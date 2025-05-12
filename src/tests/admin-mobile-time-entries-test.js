@@ -33,6 +33,13 @@ const getTodayFormatted = () => {
   return today.toISOString().split('T')[0]; // formato YYYY-MM-DD
 };
 
+// Função para obter uma data no passado (ex: mês anterior)
+const getPastDateFormatted = (monthsToSubtract = 1) => {
+  const today = new Date();
+  today.setMonth(today.getMonth() - monthsToSubtract);
+  return today.toISOString().split('T')[0]; // formato YYYY-MM-DD
+};
+
 // Função principal de teste
 async function testarAprovacaoHorasAdmin() {
   console.log('🚀 Iniciando teste de aprovação de horas por administrador na API Mobile');
@@ -52,12 +59,8 @@ async function testarAprovacaoHorasAdmin() {
       adminToken = responseAdmin.data.token;
       adminUser = responseAdmin.data.user;
       console.log(`✅ Admin autenticado: ${adminUser.name} (${adminUser.role})`);
-      console.log(`📌 Admin companyId: ${adminUser.companyId}`);
     } catch (error) {
-      console.log('❌ Falha ao autenticar como admin:', error.message);
-      if (error.response) {
-        console.log('Resposta:', error.response.data);
-      }
+      console.log('❌ Falha ao autenticar como admin:', error.response ? error.response.data : error.message);
       return;
     }
 
@@ -68,60 +71,61 @@ async function testarAprovacaoHorasAdmin() {
       employeeToken = responseEmployee.data.token;
       employeeUser = responseEmployee.data.user;
       console.log(`✅ Funcionário autenticado: ${employeeUser.name} (${employeeUser.role})`);
-      console.log(`📌 Funcionário companyId: ${employeeUser.companyId}`);
     } catch (error) {
-      console.log('❌ Falha ao autenticar como funcionário:', error.message);
-      if (error.response) {
-        console.log('Resposta:', error.response.data);
-      }
+      console.log('❌ Falha ao autenticar como funcionário:', error.response ? error.response.data : error.message);
       return;
     }
 
     // Verificar se admin e employee estão na mesma empresa
     if (adminUser.companyId !== employeeUser.companyId) {
       console.log('⚠️ Admin e funcionário não estão na mesma empresa!');
-      console.log(`Admin: companyId=${adminUser.companyId}`);
-      console.log(`Funcionário: companyId=${employeeUser.companyId}`);
+      return;
     } else {
-      console.log('✅ Admin e funcionário estão na mesma empresa:', adminUser.companyId);
+      console.log('✅ Admin e funcionário estão na mesma empresa.');
     }
 
-    // Parte 3: Criar uma data única para este teste para evitar conflitos
     const dataFormatada = getTodayFormatted();
     console.log(`📅 Data do teste: ${dataFormatada}`);
 
-    // Remover registros existentes para a data do teste
-    console.log('\n🧹 Removendo registros existentes para evitar conflitos...');
+    console.log('\n🧹 Removendo registros existentes para evitar conflitos (como Admin)...');
     try {
-      // Listar registros existentes
       const existingRecordsResponse = await axios.get(
         `${BASE_URL}/mobile-time-entries`,
         { 
-          headers: { Authorization: `Bearer ${employeeToken}` },
+          headers: { Authorization: `Bearer ${adminToken}` }, // Usar adminToken para listar todos da empresa
           params: { 
+            // Vamos listar todos da empresa para a data, sem filtrar por employeeUser.id ainda
+            // Se filtrarmos por employeeUser.id, o admin só verá os do funcionário.
+            // Para limpar geral, melhor não especificar userId aqui.
             startDate: dataFormatada,
-            endDate: dataFormatada
+            endDate: dataFormatada,
+            companyId: adminUser.companyId // Garantir que estamos na empresa certa, se a API suportar
           }
         }
       );
       
-      const existingRecords = existingRecordsResponse.data.timeEntries;
-      console.log(`Encontrados ${existingRecords.length} registros existentes para a data ${dataFormatada}`);
+      const existingRecords = existingRecordsResponse.data.timeEntries.filter(entry => entry.user.id === employeeUser.id);
+      console.log(`Encontrados ${existingRecords.length} registros DO FUNCIONÁRIO ESPECÍFICO para a data ${dataFormatada} para limpeza.`);
       
-      // Tentar remover cada registro
       for (const record of existingRecords) {
         try {
+          console.log(`  Attempting to delete record ID: ${record.id} belonging to user ${record.user.id} as ADMIN ${adminUser.id}`);
           await axios.delete(
             `${BASE_URL}/mobile-time-entries/${record.id}`, 
-            { headers: { Authorization: `Bearer ${employeeToken}` } }
+            { headers: { Authorization: `Bearer ${adminToken}` } } // Usar adminToken para deletar
           );
-          console.log(`  ✅ Registro ${record.id} removido`);
-        } catch (error) {
-          console.log(`  ⚠️ Não foi possível remover o registro ${record.id}: ${error.message}`);
+          console.log(`  ✅ Registro ${record.id} (do funcionário ${employeeUser.name}) removido pelo admin`);
+        } catch (errorDelete) {
+          console.log(`  ⚠️ Não foi possível remover o registro ${record.id} (do func.): ${errorDelete.message}. Status: ${errorDelete.response?.status}`);
+          if(errorDelete.response?.data?.error === 'Este registro já está associado a um pagamento e não pode ser excluído'){
+            console.log(`  INFO: Registro ${record.id} não pode ser excluído pois está associado a um pagamento.`);
+          } else if (errorDelete.response?.status === 403 && adminUser.id === record.user.id) {
+            console.log(` INFO: Admin não pode deletar seu próprio registro por esta rota (se aplicável), ou outra restrição 403.`);
+          }
         }
       }
-    } catch (error) {
-      console.log('⚠️ Erro ao listar/remover registros existentes:', error.message);
+    } catch (errorList) {
+      console.log('⚠️ Erro ao listar/remover registros existentes (como Admin):', errorList.message);
     }
 
     // Parte 4: Criar registros de horas como funcionário com uma diferença de 3 horas entre eles
@@ -305,6 +309,9 @@ async function testarAprovacaoHorasAdmin() {
       }
     }
 
+    // ADICIONAR CHAMADA AO NOVO TESTE ISPAID AQUI DENTRO, SE FIZER SENTIDO TER OS DADOS
+    // OU CHAMAR SEPARADAMENTE ABAIXO
+
   } catch (error) {
     console.log('❌ ERRO: Falha ao executar o teste:', error.message);
     if (error.response) {
@@ -312,8 +319,6 @@ async function testarAprovacaoHorasAdmin() {
     }
   }
 }
-
-testarAprovacaoHorasAdmin();
 
 // TESTE PARA A FUNCIONALIDADE includeOwnEntries
 async function testManagerOwnTimeEntries(managerToken, managerUser) {
@@ -459,5 +464,243 @@ async function testarFuncionalidadesManager() {
   }
 }
 
-// Executar o teste do manager após o teste do admin
-testarFuncionalidadesManager().catch(error => console.error('Erro no teste de Manager:', error));
+async function testPeriodAllParameter() {
+  console.log('\n🗓️ Testando parâmetro period=all');
+  let employeeToken = null;
+  let employeeUser = null;
+  const todayFormatted = getTodayFormatted();
+  const pastDateFormatted = getPastDateFormatted();
+  const entriesToCleanup = [];
+
+  try {
+    console.log('\n👤 Autenticando como funcionário para teste de período...');
+    const responseEmployee = await axios.post(`${BASE_URL}/mobile-auth`, EMPLOYEE_USER);
+    employeeToken = responseEmployee.data.token;
+    employeeUser = responseEmployee.data.user;
+    console.log(`✅ Funcionário autenticado para teste de período: ${employeeUser.name}`);
+
+    // Criar registro no mês atual
+    const entryTodayPayload = {
+      date: todayFormatted,
+      startTime: `${todayFormatted}T09:00:00`,
+      endTime: `${todayFormatted}T10:00:00`,
+      observation: `Registro period=all (hoje) ${Date.now()}`,
+    };
+    const entryTodayRes = await axios.post(`${BASE_URL}/mobile-time-entries`, entryTodayPayload, { headers: { Authorization: `Bearer ${employeeToken}` } });
+    const entryToday = entryTodayRes.data.timeEntry;
+    entriesToCleanup.push(entryToday.id);
+    console.log(`✅ Registro criado para hoje: ${entryToday.id}`);
+
+    // Criar registro no mês passado
+    const entryPastPayload = {
+      date: pastDateFormatted,
+      startTime: `${pastDateFormatted}T09:00:00`,
+      endTime: `${pastDateFormatted}T10:00:00`,
+      observation: `Registro period=all (passado) ${Date.now()}`,
+    };
+    const entryPastRes = await axios.post(`${BASE_URL}/mobile-time-entries`, entryPastPayload, { headers: { Authorization: `Bearer ${employeeToken}` } });
+    const entryPast = entryPastRes.data.timeEntry;
+    entriesToCleanup.push(entryPast.id);
+    console.log(`✅ Registro criado para mês passado: ${entryPast.id}`);
+
+    await sleep(RETRY_DELAY); // Dar tempo para os registros serem processados
+
+    // Teste 1: Buscar com period=all
+    console.log('\n🔍 Testando GET /mobile-time-entries?period=all');
+    const allEntriesRes = await axios.get(`${BASE_URL}/mobile-time-entries?period=all`, { headers: { Authorization: `Bearer ${employeeToken}` } });
+    const allEntries = allEntriesRes.data.timeEntries || [];
+    const foundTodayInAll = allEntries.some(e => e.id === entryToday.id);
+    const foundPastInAll = allEntries.some(e => e.id === entryPast.id);
+
+    if (foundTodayInAll && foundPastInAll) {
+      console.log(`✅ period=all retornou os registros de hoje e do passado (Total: ${allEntries.length}).`);
+    } else {
+      console.error('❌ Falha no period=all. Não encontrou todos os registros esperados.');
+      if (!foundTodayInAll) console.log('  - Registro de hoje não encontrado com period=all');
+      if (!foundPastInAll) console.log('  - Registro do passado não encontrado com period=all');
+    }
+    console.log('  Filtros aplicados pela API:', allEntriesRes.data.appliedFilters);
+    if(allEntriesRes.data.period.startDate !== null || allEntriesRes.data.period.endDate !== null){
+        console.error('❌ ERRO: Com period=all, period.startDate e period.endDate deveriam ser null.');
+    }
+
+    // Teste 2: Buscar sem period (padrão mês atual)
+    console.log('\n🔍 Testando GET /mobile-time-entries (padrão mês atual)');
+    const currentMonthEntriesRes = await axios.get(`${BASE_URL}/mobile-time-entries`, { headers: { Authorization: `Bearer ${employeeToken}` } });
+    const currentMonthEntries = currentMonthEntriesRes.data.timeEntries || [];
+    const foundTodayInCurrent = currentMonthEntries.some(e => e.id === entryToday.id);
+    const foundPastInCurrent = currentMonthEntries.some(e => e.id === entryPast.id);
+
+    if (foundTodayInCurrent && !foundPastInCurrent) {
+      console.log(`✅ Padrão de mês atual funcionou. Retornou ${currentMonthEntries.length} registro(s) (apenas o de hoje).`);
+    } else {
+      console.error('❌ Falha no padrão de mês atual.');
+      if (!foundTodayInCurrent) console.log('  - Registro de hoje não encontrado no padrão mês atual.');
+      if (foundPastInCurrent) console.log('  - Registro do passado FOI encontrado no padrão mês atual (não deveria).');
+    }
+    console.log('  Filtros aplicados pela API:', currentMonthEntriesRes.data.appliedFilters);
+    if(currentMonthEntriesRes.data.period.startDate === null || currentMonthEntriesRes.data.period.endDate === null){
+        console.error('❌ ERRO: Sem period=all, period.startDate e period.endDate NÃO deveriam ser null.');
+    }
+
+  } catch (error) {
+    console.error('❌ ERRO no teste do parâmetro period=all:', error.response ? error.response.data : error.message);
+  } finally {
+    // Limpeza
+    console.log('\n🧹 Limpando registros do teste period=all...');
+    for (const entryId of entriesToCleanup) {
+      try {
+        await axios.delete(`${BASE_URL}/mobile-time-entries/${entryId}`, { headers: { Authorization: `Bearer ${employeeToken}` } });
+        console.log(`  - Registro ${entryId} excluído.`);
+      } catch (delError) {
+        console.warn(`  - Falha ao excluir registro ${entryId}:`, delError.message);
+      }
+    }
+  }
+}
+
+async function testIsPaidField() {
+  console.log('\n💰 Testando campo isPaid nos registros de horas');
+  let adminToken = null, employeeToken = null;
+  let adminUser = null, employeeUser = null;
+  const entryIdsToPay = [];
+  const entriesToCleanup = [];
+  const todayFormatted = getTodayFormatted();
+
+  try {
+    // Autenticar Admin e Funcionário
+    console.log('\n👤 Autenticando Admin e Funcionário para teste isPaid...');
+    const resAdmin = await axios.post(`${BASE_URL}/mobile-auth`, ADMIN_USER);
+    adminToken = resAdmin.data.token;
+    adminUser = resAdmin.data.user;
+    console.log(`✅ Admin autenticado: ${adminUser.name}`);
+
+    const resEmployee = await axios.post(`${BASE_URL}/mobile-auth`, EMPLOYEE_USER);
+    employeeToken = resEmployee.data.token;
+    employeeUser = resEmployee.data.user;
+    console.log(`✅ Funcionário autenticado: ${employeeUser.name}`);
+
+    // Criar dois registros como funcionário
+    console.log('\n⏱️ Funcionário criando registros...');
+    const entry1Payload = { date: todayFormatted, startTime: `${todayFormatted}T13:00:00`, endTime: `${todayFormatted}T14:00:00`, observation: `Registro isPaid 1 ${Date.now()}` };
+    const entry2Payload = { date: todayFormatted, startTime: `${todayFormatted}T15:00:00`, endTime: `${todayFormatted}T16:00:00`, observation: `Registro isPaid 2 ${Date.now()}` };
+    const entry3Payload = { date: todayFormatted, startTime: `${todayFormatted}T17:00:00`, endTime: `${todayFormatted}T18:00:00`, observation: `Registro isPaid 3 (pendente) ${Date.now()}` };
+
+    const resEntry1 = await axios.post(`${BASE_URL}/mobile-time-entries`, entry1Payload, { headers: { Authorization: `Bearer ${employeeToken}` } });
+    const entry1 = resEntry1.data.timeEntry;
+    entriesToCleanup.push(entry1.id);
+    console.log(`  - Registro 1 criado: ${entry1.id}`);
+
+    const resEntry2 = await axios.post(`${BASE_URL}/mobile-time-entries`, entry2Payload, { headers: { Authorization: `Bearer ${employeeToken}` } });
+    const entry2 = resEntry2.data.timeEntry;
+    entriesToCleanup.push(entry2.id);
+    console.log(`  - Registro 2 criado: ${entry2.id}`);
+    
+    const resEntry3 = await axios.post(`${BASE_URL}/mobile-time-entries`, entry3Payload, { headers: { Authorization: `Bearer ${employeeToken}` } });
+    const entry3 = resEntry3.data.timeEntry; // Pendente, não será aprovado
+    entriesToCleanup.push(entry3.id);
+    console.log(`  - Registro 3 (pendente) criado: ${entry3.id}`);
+
+    await sleep(RETRY_DELAY);
+
+    // Admin aprova os dois primeiros registros
+    console.log('\n👍 Admin aprovando registros...');
+    await axios.put(`${BASE_URL}/mobile-time-entries/${entry1.id}/approve`, { approved: true }, { headers: { Authorization: `Bearer ${adminToken}` } });
+    console.log(`  - Registro ${entry1.id} aprovado.`);
+    await axios.put(`${BASE_URL}/mobile-time-entries/${entry2.id}/approve`, { approved: true }, { headers: { Authorization: `Bearer ${adminToken}` } });
+    console.log(`  - Registro ${entry2.id} aprovado.`);
+    entryIdsToPay.push(entry1.id); // Apenas o entry1 será pago
+
+    await sleep(RETRY_DELAY);
+
+    // Admin cria um pagamento incluindo apenas o entry1
+    console.log('\n💳 Admin criando pagamento para entry1...');
+    const paymentPayload = {
+      userId: employeeUser.id,
+      amount: 50, // Valor simbólico
+      date: todayFormatted,
+      paymentMethod: "test_method",
+      status: "completed",
+      periodStart: todayFormatted,
+      periodEnd: todayFormatted,
+      timeEntryIds: [entry1.id]
+    };
+    
+    let paymentId = null;
+    try {
+      const paymentRes = await axios.post(`${BASE_URL}/mobile-payments`, paymentPayload, { headers: { Authorization: `Bearer ${adminToken}` } });
+      paymentId = paymentRes.data.payment?.id;
+      if (paymentId) {
+        console.log(`✅ Pagamento criado com ID: ${paymentId}, incluindo registro ${entry1.id}`);
+      } else {
+        console.error('❌ Falha ao criar pagamento, ID não retornado.', paymentRes.data);
+      }
+    } catch (paymentError) {
+        console.error('❌ ERRO CRÍTICO ao criar pagamento:', paymentError.response ? paymentError.response.data : paymentError.message);
+        // Não continuar se o pagamento falhar, pois o teste de isPaid ficará incorreto.
+        throw paymentError; 
+    }
+
+    await sleep(RETRY_DELAY);
+
+    // Buscar todos os registros do funcionário e verificar isPaid
+    console.log('\n📊 Verificando campo isPaid nos registros do funcionário...');
+    const timeEntriesRes = await axios.get(`${BASE_URL}/mobile-time-entries?userId=${employeeUser.id}&period=all`, { headers: { Authorization: `Bearer ${adminToken}` } });
+    const timeEntries = timeEntriesRes.data.timeEntries || [];
+
+    const foundEntry1 = timeEntries.find(e => e.id === entry1.id);
+    const foundEntry2 = timeEntries.find(e => e.id === entry2.id);
+    const foundEntry3 = timeEntries.find(e => e.id === entry3.id);
+
+    let success = true;
+    if (foundEntry1 && foundEntry1.isPaid === true) {
+      console.log(`✅ Registro ${entry1.id} (pago): isPaid = true.`);
+    } else {
+      console.error(`❌ Falha: Registro ${entry1.id} (pago) deveria ter isPaid = true, mas é ${foundEntry1?.isPaid}. Detalhes:`, foundEntry1);
+      success = false;
+    }
+
+    if (foundEntry2 && foundEntry2.isPaid === false) {
+      console.log(`✅ Registro ${entry2.id} (aprovado, não pago): isPaid = false.`);
+    } else {
+      console.error(`❌ Falha: Registro ${entry2.id} (aprovado, não pago) deveria ter isPaid = false, mas é ${foundEntry2?.isPaid}. Detalhes:`, foundEntry2);
+      success = false;
+    }
+    
+    if (foundEntry3 && foundEntry3.isPaid === false) {
+      console.log(`✅ Registro ${entry3.id} (pendente, não pago): isPaid = false.`);
+    } else {
+      console.error(`❌ Falha: Registro ${entry3.id} (pendente, não pago) deveria ter isPaid = false, mas é ${foundEntry3?.isPaid}. Detalhes:`, foundEntry3);
+      success = false;
+    }
+
+    if(success) console.log('🎉 Teste isPaid concluído com sucesso!');
+    else console.error('❌ Teste isPaid falhou em uma ou mais verificações.');
+
+  } catch (error) {
+    console.error('❌ ERRO no teste do campo isPaid:', error.response ? error.response.data : error.message);
+  } finally {
+    // Limpeza
+    console.log('\n🧹 Limpando registros do teste isPaid...');
+    for (const entryId of entriesToCleanup) {
+      try {
+        await axios.delete(`${BASE_URL}/mobile-time-entries/${entryId}`, { headers: { Authorization: `Bearer ${employeeToken}` } });
+        console.log(`  - Registro ${entryId} excluído.`);
+      } catch (delError) {
+        console.warn(`  - Falha ao excluir registro ${entryId}:`, delError.message);
+      }
+    }
+    // TODO: Adicionar limpeza do pagamento criado, se necessário (ex: DELETE /mobile-payments/:paymentId)
+  }
+}
+
+// Executar todos os testes
+async function runAllTests() {
+  await testarAprovacaoHorasAdmin().catch(error => console.error('💣 Erro no testarAprovacaoHorasAdmin:', error.response ? error.response.data : error.message));
+  await testarFuncionalidadesManager().catch(error => console.error('💣 Erro no testarFuncionalidadesManager:', error.response ? error.response.data : error.message));
+  await testPeriodAllParameter().catch(error => console.error('💣 Erro no testPeriodAllParameter:', error.response ? error.response.data : error.message));
+  await testIsPaidField().catch(error => console.error('💣 Erro no testIsPaidField:', error.response ? error.response.data : error.message));
+  console.log('\n🏁 Todos os testes de time-entries concluídos! 🏁');
+}
+
+runAllTests();

@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
   // Novo parâmetro para incluir registros próprios do manager
   const includeOwnEntriesParam = searchParams.get('includeOwnEntries');
   const includeOwnEntries = includeOwnEntriesParam === 'true';
+  // Novo parâmetro para buscar todos os registros ou por período específico
+  const periodParam = searchParams.get('period'); // ex: 'all' para buscar todos
   
   // Parâmetros de paginação e ordenação
   const page = parseInt(searchParams.get('page') || '1');
@@ -85,26 +87,32 @@ export async function GET(req: NextRequest) {
     // Criar o filtro base com as datas
     const baseFilter: any = {};
     
-    // Verificar se as datas são iguais para usar equals em vez de range
-    const isSameDay = startDateParam && endDateParam && startDateParam === endDateParam;
-    
-    if (isSameDay) {
-      // Se for o mesmo dia, usar uma estratégia diferente para garantir precisão
-      // Extrair apenas a parte da data (YYYY-MM-DD)
-      const dateOnly = startDateParam;
-      console.log(`Mobile GET time-entries - Usando filtro de data única: ${dateOnly}`);
+    // Adicionar filtro de data apenas se periodParam não for 'all'
+    if (periodParam !== 'all') {
+      // Verificar se as datas são iguais para usar equals em vez de range
+      const isSameDay = startDateParam && endDateParam && startDateParam === endDateParam;
       
-      // Usar estratégia que funcionará independente de como a data está armazenada
-      baseFilter.date = {
-        gte: new Date(`${dateOnly}T00:00:00.000Z`),
-        lt: new Date(`${dateOnly}T23:59:59.999Z`)
-      };
+      if (isSameDay) {
+        // Se for o mesmo dia, usar uma estratégia diferente para garantir precisão
+        // Extrair apenas a parte da data (YYYY-MM-DD)
+        const dateOnly = startDateParam;
+        console.log(`Mobile GET time-entries - Usando filtro de data única: ${dateOnly}`);
+        
+        // Usar estratégia que funcionará independente de como a data está armazenada
+        baseFilter.date = {
+          gte: new Date(`${dateOnly}T00:00:00.000Z`),
+          lt: new Date(`${dateOnly}T23:59:59.999Z`)
+        };
+      } else {
+        // Para intervalos de data, usar o range normal
+        baseFilter.date = {
+          gte: startDate,
+          lte: endDate
+        };
+      }
+      console.log('Mobile GET time-entries - Filtro base de data aplicado:', JSON.stringify(baseFilter.date));
     } else {
-      // Para intervalos de data, usar o range normal
-      baseFilter.date = {
-        gte: startDate,
-        lte: endDate
-      };
+      console.log('Mobile GET time-entries - Buscando todos os registros (period=all)');
     }
     
     // Log do filtro base para depuração
@@ -382,9 +390,25 @@ export async function GET(req: NextRequest) {
     ]);
     
     // Contar total de registros para paginação
-    const total = timeEntries.length;
-    const totalEntries = approved + pending + rejected;
-    
+    const total = timeEntries.length; // Isso pode não ser o total real se a paginação for feita no DB
+    const totalCountForPagination = await prisma.timeEntry.count({ where });
+
+    // Adicionar informação se o registro foi pago
+    const timeEntryIds = timeEntries.map(entry => entry.id);
+    let paidTimeEntryIds = new Set<string>();
+
+    if (timeEntryIds.length > 0) {
+      const paymentTimeEntries = await prisma.paymentTimeEntry.findMany({
+        where: {
+          timeEntryId: { in: timeEntryIds }
+        },
+        select: {
+          timeEntryId: true
+        }
+      });
+      paidTimeEntryIds = new Set(paymentTimeEntries.map(pte => pte.timeEntryId));
+    }
+
     // Transformar as datas em strings para evitar problemas de serialização
     const formattedEntries = timeEntries.map(entry => {
       // Preservar a data original para exibição, sem ajustes de fuso horário
@@ -416,6 +440,7 @@ export async function GET(req: NextRequest) {
         approved: entry.approved,
         rejected: entry.rejected,
         rejectionReason: entry.rejectionReason,
+        isPaid: paidTimeEntryIds.has(entry.id), // Adicionar o campo isPaid
         createdAt: format(entry.createdAt, 'yyyy-MM-dd\'T\'HH:mm:ss'),
         updatedAt: format(entry.updatedAt, 'yyyy-MM-dd\'T\'HH:mm:ss'),
         user: entry.user ? {
@@ -433,27 +458,27 @@ export async function GET(req: NextRequest) {
       userId: auth.id,
       role: auth.role,
       count: timeEntries.length,
-      period: `${format(startDate, 'yyyy-MM-dd')} até ${format(endDate, 'yyyy-MM-dd')}`
+      period: periodParam === 'all' ? null : `${format(startDate, 'yyyy-MM-dd')} até ${format(endDate, 'yyyy-MM-dd')}`
     });
     
     // Retornar dados com informações de paginação e estatísticas
     return createCorsResponse({ 
       timeEntries: formattedEntries,
       period: {
-        startDate: format(startDate, 'yyyy-MM-dd'),
-        endDate: format(endDate, 'yyyy-MM-dd')
+        startDate: periodParam === 'all' ? null : format(startDate, 'yyyy-MM-dd'),
+        endDate: periodParam === 'all' ? null : format(endDate, 'yyyy-MM-dd')
       },
       pagination: {
-        total,
+        total: totalCountForPagination, // Usar a contagem total real para paginação
         page,
         limit,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(totalCountForPagination / limit) // Usar a contagem total real
       },
       stats: {
         approved,
         pending,
         rejected,
-        total: totalEntries
+        total: approved + pending + rejected
       },
       appliedFilters: {
         approved: approvedParam,
@@ -462,6 +487,7 @@ export async function GET(req: NextRequest) {
         minHours: minHoursParam,
         maxHours: maxHoursParam,
         unpaid: unpaidParam,
+        period: periodParam, // Adicionar o filtro de período aplicado
         sortBy,
         sortOrder
       }

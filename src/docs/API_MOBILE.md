@@ -104,8 +104,9 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 **Query Parameters (opcionais):**
-- `startDate`: Data inicial no formato ISO (YYYY-MM-DD)
-- `endDate`: Data final no formato ISO (YYYY-MM-DD)
+- `startDate`: Data inicial no formato ISO (YYYY-MM-DD). Ignorado se `period=all`.
+- `endDate`: Data final no formato ISO (YYYY-MM-DD). Ignorado se `period=all`.
+- `period`: Define o período dos registros. Use `all` para buscar todos os registros (ignora `startDate` e `endDate`). Se não fornecido, assume o mês atual.
 - `userId`: ID do usuário específico (apenas para ADMIN, MANAGER e DEVELOPER)
 - `approved`: Filtrar por status de aprovação (true/false)
 - `rejected`: Filtrar por status de rejeição (true/false)
@@ -119,7 +120,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 - `sortBy`: Campo para ordenação (date, hours, createdAt)
 - `sortOrder`: Direção da ordenação (asc, desc)
 
-Se não especificado, retorna registros do mês atual.
+Se `startDate` e `endDate` não forem especificados e `period` não for `all`, retorna registros do mês atual.
 
 **Controle de Acesso por Papel:**
 
@@ -159,6 +160,7 @@ Se não especificado, retorna registros do mês atual.
       "approved": true,
       "rejected": null,
       "rejectionReason": null,
+      "isPaid": false,
       "userId": "123456",
       "user": {
         "id": "123456",
@@ -194,6 +196,7 @@ Se não especificado, retorna registros do mês atual.
     "minHours": null,
     "maxHours": null,
     "unpaid": null,
+    "period": null,
     "sortBy": "date",
     "sortOrder": "desc"
   }
@@ -207,36 +210,48 @@ Se não especificado, retorna registros do mês atual.
 GET /mobile-time-entries
 ```
 
-2. **ADMIN** - Visualizar registros de um funcionário específico:
+2. **ADMIN** - Visualizar todos os registros da empresa de todos os tempos:
+```
+GET /mobile-time-entries?period=all
+```
+
+3. **ADMIN** - Visualizar registros de um funcionário específico:
 ```
 GET /mobile-time-entries?userId=123456
 ```
 
-3. **ADMIN/MANAGER** - Visualizar apenas registros aprovados em um período específico:
+4. **ADMIN/MANAGER** - Visualizar apenas registros aprovados em um período específico:
 ```
 GET /mobile-time-entries?startDate=2023-05-01&endDate=2023-05-31&approved=true
 ```
 
-4. **MANAGER** - Visualizar seus próprios registros (Minhas Horas):
+5. **MANAGER** - Visualizar seus próprios registros (Minhas Horas) de todos os tempos:
 ```
-GET /mobile-time-entries?includeOwnEntries=true&userId={manager-id}
+GET /mobile-time-entries?period=all&includeOwnEntries=true&userId={manager-id}
 ```
 
-5. **MANAGER** - Visualizar registros da equipe incluindo os próprios:
+6. **MANAGER** - Visualizar registros da equipe incluindo os próprios, do mês atual:
 ```
 GET /mobile-time-entries?includeOwnEntries=true
 ```
 
-6. **EMPLOYEE** - Visualizar seus próprios registros pendentes:
+7. **EMPLOYEE** - Visualizar seus próprios registros pendentes do mês atual:
 ```
 GET /mobile-time-entries?approved=null&rejected=null
 ```
 
+8. **EMPLOYEE** - Visualizar todos os seus próprios registros de todos os tempos:
+```
+GET /mobile-time-entries?period=all
+```
+
 **Notas Importantes:**
-- Para ADMIN e MANAGER, se nenhum userId for especificado, serão retornados todos os registros de usuários da mesma empresa
-- Para EMPLOYEE, o parâmetro userId é ignorado, pois só podem ver seus próprios registros
-- O parâmetro unpaid=true filtra apenas registros que não foram associados a pagamentos
-- **NOVO**: O parâmetro includeOwnEntries permite que managers vejam seus próprios registros, útil para a aba "Minhas Horas"
+- Para ADMIN e MANAGER, se nenhum `userId` for especificado, serão retornados todos os registros de usuários da mesma empresa (respeitando o filtro de `period`).
+- Para EMPLOYEE, o parâmetro `userId` é ignorado, pois só podem ver seus próprios registros.
+- O parâmetro `unpaid=true` filtra apenas registros que não foram associados a pagamentos.
+- O parâmetro `includeOwnEntries=true` permite que managers vejam seus próprios registros, útil para a aba "Minhas Horas".
+- **NOVO**: O parâmetro `period=all` busca todos os registros, ignorando `startDate`, `endDate` e o filtro padrão de mês atual.
+- **NOVO**: Cada registro de hora agora inclui o campo `isPaid` (booleano).
 
 #### Criar Registro
 
