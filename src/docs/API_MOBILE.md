@@ -764,18 +764,13 @@ Authorization: Bearer ... (Token de Admin ou Manager)
 
 **Endpoint:** `/mobile-users/balance`
 
-**Método:** `GET`
+**Descrição:** Retorna o saldo atual do usuário, incluindo horas aprovadas, pagas e não pagas.
 
-**Headers:**
-```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
+**Parâmetros de Consulta (opcionais):**
+- `startDate`: Data inicial no formato YYYY-MM-DD
+- `endDate`: Data final no formato YYYY-MM-DD
 
-**Query Parameters (opcionais):**
-- `startDate`: Data inicial no formato ISO (YYYY-MM-DD)
-- `endDate`: Data final no formato ISO (YYYY-MM-DD)
-
-Se não especificado, retorna o saldo do mês atual.
+Se não especificado, retorna o saldo total sem filtro de data.
 
 **Resposta de Sucesso (200):**
 ```json
@@ -791,8 +786,8 @@ Se não especificado, retorna o saldo do mês atual.
     "currency": "BRL"
   },
   "period": {
-    "startDate": "2023-04-01",
-    "endDate": "2023-04-30"
+    "startDate": "YYYY-MM-DD ou 'sem data inicial'",
+    "endDate": "YYYY-MM-DD ou 'sem data final'"
   }
 }
 ```

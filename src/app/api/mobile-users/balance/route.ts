@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { verifyMobileAuth, createCorsResponse } from '@/lib/mobile-auth';
-import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 export async function GET(req: NextRequest) {
   // Verificar autenticação
@@ -17,14 +17,9 @@ export async function GET(req: NextRequest) {
   let startDateParam = searchParams.get('startDate');
   let endDateParam = searchParams.get('endDate');
   
-  // Se não fornecidos, usar o mês atual
-  const today = new Date();
-  const defaultStartDate = startOfMonth(today);
-  const defaultEndDate = endOfMonth(today);
-  
-  // Analisar datas fornecidas ou usar padrões
-  let startDate = startDateParam ? parseISO(startDateParam) : defaultStartDate;
-  let endDate = endDateParam ? parseISO(endDateParam) : defaultEndDate;
+  // Analisar datas fornecidas
+  let startDate = startDateParam ? parseISO(startDateParam) : undefined;
+  let endDate = endDateParam ? parseISO(endDateParam) : undefined;
   
   try {
     // Construir filtro de data
@@ -106,7 +101,8 @@ export async function GET(req: NextRequest) {
       totalHours: totalApprovedHours,
       paidHours,
       unpaidHours,
-      balance
+      balance,
+      period: startDate || endDate ? `${startDate ? format(startDate, 'yyyy-MM-dd') : 'sem data inicial'} até ${endDate ? format(endDate, 'yyyy-MM-dd') : 'sem data final'}` : 'sem filtro de data'
     });
     
     // Formatar resposta
@@ -122,8 +118,8 @@ export async function GET(req: NextRequest) {
         currency: 'BRL'
       },
       period: {
-        startDate: format(startDate, 'yyyy-MM-dd'),
-        endDate: format(endDate, 'yyyy-MM-dd')
+        startDate: startDate ? format(startDate, 'yyyy-MM-dd') : 'sem data inicial',
+        endDate: endDate ? format(endDate, 'yyyy-MM-dd') : 'sem data final'
       }
     });
     
