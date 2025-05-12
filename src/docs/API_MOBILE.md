@@ -2369,14 +2369,15 @@ Authorization: Bearer ... (Token de Admin ou Manager)
       "unreadNotificationCount": 3, // Número de notificações não lidas PARA o admin/manager logado
       "pendingPaymentCount": 5,   // Número total de pagamentos com status 'pending' ou 'awaiting_confirmation'
       "totalPaidAmountMonth": 12500.75, // Valor total pago no mês atual
-      "totalPendingPaymentAmount": 3500.00 // Valor total estimado de TODAS as horas aprovadas e não pagas
+      "totalPendingPaymentAmount": 3500.00, // Valor total estimado de TODAS as horas aprovadas e não pagas
+      "totalHoursLast30Days": 680.5 // Total de horas aprovadas na empresa nos últimos 30 dias
     },
-    "user": { 
+    "user": {
       "id": "uuid-do-admin",
       "name": "Nome Admin/Manager",
       "role": "ADMIN"
     },
-    "company": { 
+    "company": {
       "id": "uuid-da-empresa",
       "name": "Nome da Empresa"
     }

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { verifyMobileAuth, createCorsResponse } from '@/lib/mobile-auth';
-import { startOfMonth, endOfMonth } from 'date-fns';
+import { startOfMonth, endOfMonth, subDays } from 'date-fns';
 
 export async function GET(req: NextRequest) {
   // Verificar autenticação e permissões (Admin/Manager)
@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
     const today = new Date();
     const currentMonthStart = startOfMonth(today);
     const currentMonthEnd = endOfMonth(today);
+    const thirtyDaysAgo = subDays(today, 30);
     
     const companyId = auth.companyId;
     
@@ -129,6 +130,20 @@ export async function GET(req: NextRequest) {
     }
     // console.log('Total de horas aprovadas não pagas:', actuallyUnpaidEntries);
 
+    // 6. Calcular total de horas aprovadas nos últimos 30 dias para a empresa
+    const approvedTimeEntriesLast30Days = await prisma.timeEntry.findMany({
+        where: {
+            user: { companyId },
+            approved: true,
+            date: { 
+                gte: thirtyDaysAgo,
+                lte: today, // Até a data de hoje
+            },
+        },
+        select: { totalHours: true },
+    });
+    const totalHoursLast30Days = approvedTimeEntriesLast30Days.reduce((sum, entry) => sum + entry.totalHours, 0);
+
     console.log(`Mobile - Admin/Manager ${auth.id} acessou dashboard summary da empresa ${companyId}`);
     
     // Montar resposta
@@ -140,6 +155,7 @@ export async function GET(req: NextRequest) {
         pendingPaymentCount,
         totalPaidAmountMonth, // Mantém o filtro mensal para este
         totalPendingPaymentAmount, // Renomeado e agora é o total geral
+        totalHoursLast30Days, // Novo campo
       },
       user: { // Informações do Admin/Manager logado
         id: auth.id,
