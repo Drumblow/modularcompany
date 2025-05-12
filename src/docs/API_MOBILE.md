@@ -2343,3 +2343,52 @@ Para questões e problemas relacionados à API, entre em contato com a equipe de
   }
 }
 ```
+
+### Resumo do Dashboard (Admin/Manager)
+
+**Endpoint:** `/mobile-admin/dashboard-summary`
+
+**Método:** `GET`
+
+**Headers:**
+```
+Authorization: Bearer ... (Token de Admin ou Manager)
+```
+
+**Descrição:** Retorna um resumo rápido de dados relevantes para o dashboard de um Administrador ou Gerente, focado na visão da empresa.
+
+**Parâmetros de Consulta:** Nenhum.
+
+**Resposta de Sucesso (200):**
+```json
+{
+  "dashboard": {
+    "summary": {
+      "pendingApprovalCount": 15, // Número de registros de horas pendentes na empresa
+      "totalUserCount": 50,     // Número total de usuários na empresa
+      "unreadNotificationCount": 3 // Número de notificações não lidas PARA o admin/manager logado
+    },
+    "user": { 
+      "id": "uuid-do-admin",
+      "name": "Nome Admin/Manager",
+      "role": "ADMIN"
+    },
+    "company": { 
+      "id": "uuid-da-empresa",
+      "name": "Nome da Empresa"
+    }
+  }
+}
+```
+
+**Respostas de Erro:**
+- **401 Unauthorized:** Token inválido ou expirado.
+- **403 Forbidden:** Usuário não tem permissão (não é Admin/Manager).
+- **400 Bad Request:** Usuário autenticado não está associado a uma empresa.
+- **500 Internal Server Error:** Erro inesperado no servidor.
+
+--- 
+
+## Implementação no React Native
+// ... existing code ...
+}
