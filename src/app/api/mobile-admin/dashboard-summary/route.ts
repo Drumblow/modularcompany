@@ -90,48 +90,45 @@ export async function GET(req: NextRequest) {
     });
     const totalPaidAmountMonth = paymentsCompletedMonth.reduce((sum, p) => sum + p.amount, 0);
     
-    // 5.3. Valor Total de Horas Aprovadas AINDA NÃO PAGAS no mês atual
-    // Primeiro, buscar todas as time entries aprovadas da empresa no período
-    const approvedTimeEntriesInMonth = await prisma.timeEntry.findMany({
+    // 5.3. Valor total de horas aprovadas AINDA NÃO PAGAS (Total)
+    // Primeiro, buscar TODAS as time entries aprovadas da empresa
+    const allApprovedTimeEntries = await prisma.timeEntry.findMany({
         where: {
             user: { companyId },
             approved: true,
-            date: { 
-                gte: currentMonthStart,
-                lte: currentMonthEnd,
-            },
+            // REMOVIDO: Filtro de data para incluir todas as datas
+            // date: { 
+            //     gte: currentMonthStart,
+            //     lte: currentMonthEnd,
+            // },
         },
         include: {
-            user: { select: { hourlyRate: true, id: true } }, // Incluir ID do usuário para referência
+            user: { select: { hourlyRate: true, id: true } },
         },
     });
 
-    // Segundo, buscar os IDs de todas as time entries que JÁ foram pagas (estão em PaymentTimeEntry)
+    // Segundo, buscar os IDs de todas as time entries que JÁ foram pagas
     const paidTimeEntryLinks = await prisma.paymentTimeEntry.findMany({
         where: {
-            payment: { 
-                user: { companyId } // Garante que são pagamentos da mesma empresa
-            },
-            // Poderia adicionar um filtro para timeEntryId in approvedTimeEntriesInMonth.map(te => te.id) se a lista não for muito grande
+            payment: { user: { companyId } },
         },
         select: { timeEntryId: true },
     });
     const paidTimeEntryIds = new Set(paidTimeEntryLinks.map(link => link.timeEntryId));
 
-    // Terceiro, filtrar as time entries aprovadas para encontrar as que não foram pagas
-    let pendingPaymentAmountMonth = 0;
-    const actuallyUnpaidEntries = []; // Para debug, se necessário
+    // Terceiro, filtrar as time entries aprovadas para encontrar as que não foram pagas e calcular o valor TOTAL
+    let totalPendingPaymentAmount = 0;
+    // const actuallyUnpaidEntries = []; // Para debug
 
-    for (const entry of approvedTimeEntriesInMonth) {
+    for (const entry of allApprovedTimeEntries) {
         if (!paidTimeEntryIds.has(entry.id)) {
             const rate = entry.user.hourlyRate || 0;
-            pendingPaymentAmountMonth += entry.totalHours * rate;
-            actuallyUnpaidEntries.push({id: entry.id, hours: entry.totalHours, rate, user: entry.user.id});
+            totalPendingPaymentAmount += entry.totalHours * rate;
+            // actuallyUnpaidEntries.push({id: entry.id, hours: entry.totalHours, rate, user: entry.user.id});
         }
     }
-    // console.log('Horas aprovadas não pagas este mês:', actuallyUnpaidEntries);
+    // console.log('Total de horas aprovadas não pagas:', actuallyUnpaidEntries);
 
-    // Log de sucesso
     console.log(`Mobile - Admin/Manager ${auth.id} acessou dashboard summary da empresa ${companyId}`);
     
     // Montar resposta
@@ -141,8 +138,8 @@ export async function GET(req: NextRequest) {
         totalUserCount,
         unreadNotificationCount,
         pendingPaymentCount,
-        totalPaidAmountMonth,
-        pendingPaymentAmountMonth,
+        totalPaidAmountMonth, // Mantém o filtro mensal para este
+        totalPendingPaymentAmount, // Renomeado e agora é o total geral
       },
       user: { // Informações do Admin/Manager logado
         id: auth.id,

@@ -64,7 +64,7 @@ async function runAdminDashboardTest() {
       unreadNotificationCount: 'number',
       pendingPaymentCount: 'number',
       totalPaidAmountMonth: 'number',
-      pendingPaymentAmountMonth: 'number'
+      totalPendingPaymentAmount: 'number'
     };
 
     for (const [key, type] of Object.entries(summaryChecks)) {
