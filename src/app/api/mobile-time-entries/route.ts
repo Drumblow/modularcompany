@@ -167,77 +167,73 @@ export async function GET(req: NextRequest) {
     } 
     else if (auth.role === 'ADMIN' || auth.role === 'MANAGER') {
       // Para admin/manager, buscar primeiro os IDs dos usuários da mesma empresa
-      const usersInCompany = await prisma.user.findMany({
+      const usersInCompanyQuery = await prisma.user.findMany({
         where: {
           companyId: auth.companyId
         },
         select: {
-          id: true
+          id: true,
+          role: true // Selecionar role para filtrar managers
         }
       });
       
-      const userIds = usersInCompany.map(user => user.id);
-      console.log(`Mobile - ${auth.role}: Encontrados ${userIds.length} usuários na empresa ${auth.companyId}`);
+      // Para managers, filtrar para não incluir ADMINs e DEVELOPERs na visão de equipe,
+      // a menos que seja o próprio manager e includeOwnEntries seja true.
+      let userIdsForFilter = usersInCompanyQuery.map(user => user.id);
+      if (auth.role === 'MANAGER') {
+        userIdsForFilter = usersInCompanyQuery
+          .filter(user => {
+            // Manter o próprio manager sempre, se includeOwnEntries for relevante para a query geral
+            if (user.id === auth.id) return true; 
+            // Excluir ADMINs e DEVELOPERs da lista de equipe
+            return user.role !== 'ADMIN' && user.role !== 'DEVELOPER';
+          })
+          .map(user => user.id);
+        console.log(`Mobile - MANAGER: Após filtro de roles (ADMIN/DEVELOPER), ${userIdsForFilter.length} usuários considerados para a equipe.`);
+      }
+      
+      console.log(`Mobile - ${auth.role}: Encontrados ${usersInCompanyQuery.length} usuários na empresa ${auth.companyId} (antes do filtro de role para manager)`);
       
       if (userIdParam) {
-        // Se um usuário específico foi solicitado, verificar se pertence à empresa
-        if (userIds.includes(userIdParam)) {
+        // Se um usuário específico foi solicitado, verificar se pertence à lista filtrada (para manager) ou geral (para admin)
+        const finalUserCheckList = auth.role === 'MANAGER' ? userIdsForFilter : usersInCompanyQuery.map(u=>u.id);
+        if (finalUserCheckList.includes(userIdParam)) {
           where = {
             ...baseFilter,
             userId: userIdParam
           };
-          console.log(`Mobile - ${auth.role}: Filtrando por usuário específico (${userIdParam}) da mesma empresa`);
+          console.log(`Mobile - ${auth.role}: Filtrando por usuário específico (${userIdParam}) da mesma empresa.`);
         } else {
-          // Usuário não pertence à empresa, retornar array vazio
-          where = {
-            id: 'não-existente' // Garante que nenhum registro será encontrado
-          };
-          console.log(`Mobile - ${auth.role}: Usuário solicitado (${userIdParam}) não pertence à empresa`);
+          where = { id: 'não-existente' };
+          console.log(`Mobile - ${auth.role}: Usuário solicitado (${userIdParam}) não pertence à empresa ou foi filtrado (ex: ADMIN para visão de manager).`);
         }
       } else {
-        // Verificar se é um manager e se deseja incluir seus próprios registros
-        if (auth.role === 'MANAGER' && includeOwnEntries) {
-          // Se for ver apenas os seus próprios registros (Minhas Horas)
-          if (includeOwnEntries && userIdParam === auth.id) {
+        // NENHUM userIdParam específico foi fornecido
+        if (auth.role === 'MANAGER') {
+          if (includeOwnEntries) {
+            // Manager quer ver a equipe (filtrada de ADMINs/DEV) E seus próprios registros
             where = {
               ...baseFilter,
-              userId: auth.id
+              userId: { in: userIdsForFilter } // userIdsForFilter já contém o próprio manager e exclui ADMINs/DEVs
             };
-            console.log(`Mobile - MANAGER: Filtrando apenas pelos próprios registros do manager ${auth.id}`);
-          } 
-          // Se for ver todos os registros incluindo os seus próprios
-          else {
-            where = {
-              ...baseFilter,
-              userId: {
-                in: userIds
-              }
-            };
-            console.log(`Mobile - MANAGER: Filtrando por ${userIds.length} usuários da mesma empresa (incluindo o próprio manager)`);
-          }
-        } else {
-          // Comportamento original - filtrar por todos os usuários da empresa para Admin
-          // ou apenas subordinados para Manager (sem incluir os próprios registros)
-          if (auth.role === 'MANAGER') {
-            // Para manager, excluir seu próprio ID da lista de usuários
-            const filteredUserIds = userIds.filter(id => id !== auth.id);
-            where = {
-              ...baseFilter,
-              userId: {
-                in: filteredUserIds
-              }
-            };
-            console.log(`Mobile - MANAGER: Filtrando por ${filteredUserIds.length} usuários subordinados (excluindo o próprio manager)`);
+            console.log(`Mobile - MANAGER (includeOwnEntries=true): Filtrando por ${userIdsForFilter.length} usuários (equipe filtrada + próprio manager).`);
           } else {
-            // Para admin, incluir todos os usuários da empresa
+            // Manager quer ver SÓ a equipe (filtrada de ADMINs/DEV e excluindo ele mesmo)
+            const teamOnlyIds = userIdsForFilter.filter(id => id !== auth.id);
             where = {
               ...baseFilter,
-              userId: {
-                in: userIds
-              }
+              userId: { in: teamOnlyIds }
             };
-            console.log(`Mobile - ADMIN: Filtrando por ${userIds.length} usuários da mesma empresa`);
+            console.log(`Mobile - MANAGER (includeOwnEntries=false): Filtrando por ${teamOnlyIds.length} usuários subordinados (equipe filtrada, excluindo próprio manager).`);
           }
+        } else { // ADMIN
+          // Admin vê todos da empresa (sem filtro de role aqui, já que admins veem outros admins)
+          const allCompanyUserIds = usersInCompanyQuery.map(u => u.id);
+          where = {
+            ...baseFilter,
+            userId: { in: allCompanyUserIds }
+          };
+          console.log(`Mobile - ADMIN: Filtrando por ${allCompanyUserIds.length} usuários da mesma empresa`);
         }
       }
     } 
@@ -346,7 +342,8 @@ export async function GET(req: NextRequest) {
             name: true,
             email: true,
             hourlyRate: true,
-            companyId: true
+            companyId: true,
+            role: true
           }
         }
       }
@@ -448,7 +445,8 @@ export async function GET(req: NextRequest) {
           name: entry.user.name,
           email: entry.user.email,
           hourlyRate: entry.user.hourlyRate,
-          companyId: entry.user.companyId
+          companyId: entry.user.companyId,
+          role: entry.user.role
         } : null
       };
     });

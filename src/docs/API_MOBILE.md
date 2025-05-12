@@ -129,17 +129,17 @@ Se `startDate` e `endDate` não forem especificados e `period` não for `all`, r
   - Pode filtrar por userId específico
 
 - **ADMIN**: Acesso aos registros da sua empresa
-  - Pode ver registros de todos os usuários da mesma empresa
+  - Pode ver registros de todos os usuários da mesma empresa (incluindo outros ADMINs e MANAGERs da empresa)
   - Pode filtrar por userId específico (desde que o usuário pertença à mesma empresa)
   - Não pode ver registros de outras empresas
 
 - **MANAGER**: Acesso aos registros da sua equipe
-  - Pode ver registros de todos os usuários da mesma empresa
-  - Pode filtrar por userId específico (desde que o usuário pertença à mesma empresa)
-  - Não pode ver registros de outras empresas
-  - Por padrão, não vê seus próprios registros (apenas dos subordinados)
-  - **NOVO**: Pode ver seus próprios registros usando o parâmetro `includeOwnEntries=true`
-  - **NOVO**: Pode ver apenas seus próprios registros usando `includeOwnEntries=true&userId={seu-id}`
+  - **NOVO**: Ao visualizar registros da "equipe" (ou seja, quando `userId` não é especificado ou quando `includeOwnEntries=true` sem um `userId` específico do manager), a lista de usuários considerados exclui aqueles com papéis `ADMIN` e `DEVELOPER`. Managers verão registros de `EMPLOYEE`s e outros `MANAGER`s (incluindo eles mesmos se `includeOwnEntries=true`) dentro de sua empresa.
+  - Pode filtrar por userId específico (desde que o usuário pertença à mesma empresa e não seja um ADMIN/DEVELOPER, a menos que seja o próprio manager).
+  - Não pode ver registros de outras empresas.
+  - Por padrão (sem `includeOwnEntries=true`), não vê seus próprios registros (apenas dos subordinados filtrados).
+  - Pode ver seus próprios registros usando o parâmetro `includeOwnEntries=true` (especialmente com `userId={seu-id}`).
+  - Pode ver apenas seus próprios registros usando `includeOwnEntries=true&userId={seu-id}`.
 
 - **EMPLOYEE**: Acesso restrito aos próprios registros
   - Pode ver apenas seus próprios registros
@@ -167,7 +167,8 @@ Se `startDate` e `endDate` não forem especificados e `period` não for `all`, r
         "name": "Nome do Usuário",
         "email": "usuario@exemplo.com",
         "hourlyRate": 50,
-        "companyId": "789012"
+        "companyId": "789012",
+        "role": "EMPLOYEE" // NOVO: user.role agora é incluído
       },
       "createdAt": "2023-04-15T08:50:00",
       "updatedAt": "2023-04-15T17:10:00"
@@ -246,12 +247,14 @@ GET /mobile-time-entries?period=all
 ```
 
 **Notas Importantes:**
-- Para ADMIN e MANAGER, se nenhum `userId` for especificado, serão retornados todos os registros de usuários da mesma empresa (respeitando o filtro de `period`).
+- Para ADMIN e MANAGER, se nenhum `userId` for especificado, serão retornados todos os registros de usuários da mesma empresa (respeitando o filtro de `period` e, para MANAGER, o novo filtro de `role` para a equipe).
 - Para EMPLOYEE, o parâmetro `userId` é ignorado, pois só podem ver seus próprios registros.
 - O parâmetro `unpaid=true` filtra apenas registros que não foram associados a pagamentos.
 - O parâmetro `includeOwnEntries=true` permite que managers vejam seus próprios registros, útil para a aba "Minhas Horas".
 - **NOVO**: O parâmetro `period=all` busca todos os registros, ignorando `startDate`, `endDate` e o filtro padrão de mês atual.
 - **NOVO**: Cada registro de hora agora inclui o campo `isPaid` (booleano).
+- **NOVO**: O objeto `user` dentro de cada `timeEntry` agora inclui o campo `role`.
+- **NOVO**: A visão de "equipe" para `MANAGER`s agora exclui automaticamente usuários `ADMIN` e `DEVELOPER` (a menos que seja o registro do próprio manager com `includeOwnEntries=true`).
 
 #### Criar Registro
 
